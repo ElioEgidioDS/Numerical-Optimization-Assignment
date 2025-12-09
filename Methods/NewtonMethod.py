@@ -2,6 +2,9 @@ import numpy as np
 from scipy.sparse.linalg import splu
 from scipy.sparse import eye
 from Methods.Backtracking import Backtracking
+from scipy.linalg import cholesky_banded, solve_banded
+
+
 
 class NewtonMethod:
     def __init__(self, tol, max_n):
@@ -12,12 +15,14 @@ class NewtonMethod:
         bcktrk = Backtracking(0.5,0.5,100)
         x = x0
         B = 1e-3
+        I = eye(x0.shape[0], format="csr")
+
         if mode == "exact":
-            for k in range(self.max_n):
+            for _ in range(self.max_n):
                 gradient = problem.gradient(x)
                 hessian = problem.hessian(x)
 
-                if np.linalg.norm(gradient) < self.tol*max(1,np.linalg.norm(gradient)):
+                if np.linalg.norm(gradient) < self.tol: #*max(1,np.linalg.norm(gradient))
                     return x
                 
                 if hessian.diagonal().min() > 0:
@@ -27,10 +32,11 @@ class NewtonMethod:
                 
                 for j in range(20):
                     try:
-                        Bk = hessian + tau*eye(self.max_n,format = "csc")
-                        lu_fact = splu(Bk)
+                        Bk = hessian + tau*I
+                        lu_fact = splu(Bk)#to change
 
                         p_mn = lu_fact.solve(-gradient)
+                        break
                     except RuntimeError:
                         tau = max(2 * tau, B)
 
