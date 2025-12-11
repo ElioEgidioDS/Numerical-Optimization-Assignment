@@ -13,7 +13,8 @@ class NewtonMethod:
 
     def minimize(self, problem,x0, mode, k=0):
         bcktrk = Backtracking(0.5,0.5,100)
-        x = x0
+        x = x0.copy()
+        path = [x.copy()]
         B = 1e-3
         I = eye(x0.shape[0], format="csr")
 
@@ -23,7 +24,7 @@ class NewtonMethod:
                 hessian = problem.hessian(x)
 
                 if np.linalg.norm(gradient) < self.tol: #*max(1,np.linalg.norm(gradient))
-                    return x
+                    return x, np.array(path), np.linalg.norm(gradient)
                 
                 if hessian.diagonal().min() > 0:
                     tau = 0
@@ -41,10 +42,14 @@ class NewtonMethod:
                         tau = max(2 * tau, B)
 
                 alpha = bcktrk.backtrack(p_mn,x,problem.function,1,gradient)
+                
 
                 x = x + alpha * p_mn
+                path.append(x.copy())
+            print(alpha)
+            print(np.linalg.norm(gradient))
 
-            return x
+            return x, np.array(path), np.linalg.norm(gradient)
 
 
         elif mode == "fd":
