@@ -19,9 +19,11 @@ class Backtracking:
         for k in range(1,self.max_k):
             f_next_step = function(x_curr + alpha*p_desc)
             armijo_condition = f_curr + alpha*self.C1*slope
+            
             if f_next_step <= armijo_condition:
                 return alpha
             else:
                 alpha = self.rho*alpha
+            
         
-        print("no alpha was found")
+        print(f"no alpha was found in {k} steps" )

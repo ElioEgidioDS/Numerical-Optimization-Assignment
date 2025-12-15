@@ -1,5 +1,6 @@
 import time
 import numpy as np
+import pandas as pd
 from Methods.NewtonMethod import NewtonMethod
 from Problems.Problem_64 import Problem_64
 import matplotlib.pyplot as plt
@@ -70,44 +71,132 @@ def main():
 
     
     n = [2, 10**3, 10**4, 10**5]
-    tol = 1e-12
-    x0 = [np.ones(x) for x in n] #default inital starting point
+    tol = [1e-6, 1e-8, 1e-10, 1e-12] #PARAMETER TO CHANGE
+
+    x0 = [np.ones(x) for x in n]
     x_ground = [np.zeros(x) for x in n]
     np.random.seed(359806)
     xRand = [np.random.uniform(low=x-1,high=x+1,size=(5,x.shape[0])) for x in x0]
 
-    starting_point = x_ground[1]
-    print(xRand[3].shape)
-    #print(xRand[1][0])
-
 
     modified_newt = NewtonMethod(tol, 1000)
     function_31 = None
-    problem_64 = Problem_64(n[1],10)
+    
+    x_initial_results = {}
+    x_ground_results = {}
+    x_random_results = {}
 
     for exact_derivatives in [True, False]:
         if exact_derivatives:
             print("--- using exact derivatives ---")
-            start_time = time.time()
-            x, path, norm_gradient = modified_newt.minimize(problem_64,starting_point,mode='exact')
-            print(norm_gradient)
-        
-            end_time = time.time() - start_time
+            for starting_point in x0:
+                
+                problem_64 = Problem_64(starting_point.shape[0],10)
+
+                start_time = time.time()
+                x, path, norm_gradient, converges, steps = modified_newt.minimize(problem_64,starting_point,mode='exact')
+            
+                end_time = time.time() - start_time
+
+                final_score = problem_64.function(x)
+
+                '''
+                print(f"Final Score (should be ~0): {final_score:.5e}")
+                # Also check the individual errors (residuals)
+                errors = problem_64.function_k(x)
+                print(f"Max Error in any link: {np.max(np.abs(errors)):.5e}")
+                print(f"elaped time of newton method {end_time}")'''
+
+                x_initial_results[starting_point.shape[0]] = {"x":x, "path":path, "norm_gradient" : norm_gradient, "time" :end_time, "final_score":final_score, "converges" : converges, "iterations": steps }
+            x_initial_pd = pd.DataFrame(x_initial_results)
+            print()
+
+            for starting_point in x_ground:
+            
+                problem_64 = Problem_64(starting_point.shape[0],10)
+
+                start_time = time.time()
+                x, path, norm_gradient, converges, steps = modified_newt.minimize(problem_64,starting_point,mode='exact')
+                #print(f"norm of the gradient:{norm_gradient}")
+            
+                end_time = time.time() - start_time
+
+                final_score = problem_64.function(x)
+
+                '''
+                print(f"Final Score (should be ~0): {final_score:.5e}")
+                # Also check the individual errors (residuals)
+                errors = problem_64.function_k(x)
+                print(f"Max Error in any link: {np.max(np.abs(errors)):.5e}")
+                print(f"elaped time of newton method {end_time}")'''
+
+                x_ground_results[starting_point.shape[0]] = {"x":x, "path":path, "norm_gradient" : norm_gradient, "time" :end_time, "final_score":final_score, "converges" : converges, "iterations": steps }
+            x_ground_pd = pd.DataFrame(x_ground_results)
+            print()
+
+            for starting_size in xRand:
+                
+                path_history = {}
+                avg_norm_gradient = []
+                avg_time = []
+                avg_final_score = []
+                converges_list = []
+                avg_iterations = []
+                problem_64 = Problem_64(starting_size.shape[1],10)
+                print(starting_size.shape)
+                for starting_point in starting_size:
+                    
+                    
+
+                    start_time = time.time()
+                    x, path, norm_gradient, converges, steps = modified_newt.minimize(problem_64,starting_point,mode='exact')
+                    #(f"norm of the gradient:{norm_gradient}")
+                
+                    end_time = time.time() - start_time
+
+                    final_score = problem_64.function(x)
+
+                    '''
+                    print(f"Final Score (should be ~0): {final_score:.5e}")
+                    # Also check the individual errors (residuals)
+                    errors = problem_64.function_k(x)
+                    print(f"Max Error in any link: {np.max(np.abs(errors)):.5e}")
+                    print(f"elaped time of newton method {end_time}")'''
+
+                    if starting_size.shape[1] not in path_history:
+                        path_history[starting_size.shape[1]] = []
+
+                    path_history[starting_size.shape[1]].append(path)
+                    avg_norm_gradient.append(norm_gradient)
+                    avg_time.append(end_time)
+                    avg_final_score.append(final_score)
+                    avg_iterations.append(steps) 
+                    converges_list.append(converges)
+                
+
+                avg_norm_gradient = np.array(avg_norm_gradient).mean()
+                avg_time = np.array(avg_time).mean()
+                avg_final_score = np.array(avg_final_score).mean()
+                avg_iterations = np.array(avg_iterations).mean()
+                converges_final = np.array(converges_list).all()
+                
 
 
-            final_score = problem_64.function(x)
-            print(f"Final Score (should be ~0): {final_score:.5e}")
-            # Also check the individual errors (residuals)
-            errors = problem_64.function_k(x)
-            print(f"Max Error in any link: {np.max(np.abs(errors)):.5e}")
-            print(f"elaped time of newton method {end_time}")
+                x_random_results[starting_point.shape[0]] = { "norm_gradient" : avg_norm_gradient, "time" : avg_time, "final_score": avg_final_score, "converges" : converges_final, "iterations": avg_iterations, "paths":path_history }
+            x_random_pd = pd.DataFrame(x_random_results)
+            print(len(x_random_results[1000]['paths'][1000]))
+            print()
+
+            
+
+
 
         else:
             print("--- Running with FINITE DIFFERENCE ---")
             #modified_newt.minimize(problem_64, mode='fd', k=8)
     
 
-    t_grid = np.linspace(0, 1, problem_64.n + 2) 
+    '''t_grid = np.linspace(0, 1, problem_64.n + 2) 
     # 2. Add the boundary conditions (0 on left, 1 on right)
     y_values = np.concatenate(([0], x, [1]))
     # 3. Plot
@@ -116,8 +205,8 @@ def main():
     plt.xlabel("Position t")
     plt.ylabel("Height x")
     plt.grid(True)
-    plt.show()
-
+    plt.show()'''
+#---------------------------------------
     '''grid_min, grid_max = -1.2, 1.2
     x1_vals = np.linspace(grid_min, grid_max, 100)
     x2_vals = np.linspace(grid_min, grid_max, 100)
@@ -153,6 +242,8 @@ def main():
     plt.grid(True, alpha=0.3)
     plt.show()'''
 
+    #---------------------------------------
+
     '''errors = problem_64.function_k(x)
 
     plt.figure(figsize=(10, 4))
@@ -163,6 +254,10 @@ def main():
     plt.axhline(0, color='black', alpha=0.5)
     plt.grid(True, alpha=0.3)
     plt.show()'''
+
+    #---------------------------------------
+
+    '''
 
     #----
     t_grid = np.linspace(0, 1, problem_64.n + 2)
@@ -191,8 +286,10 @@ def main():
     plt.ylabel("Height x")
     plt.grid(True)
     plt.legend()
-    plt.show()
-    plot_interactive_evolution(problem_64, path)
+    plt.show()'''
+
+
+    #plot_interactive_evolution(problem_64, path)
 
 
 if __name__ == "__main__":
