@@ -3,87 +3,95 @@ from collections import defaultdict
 from scipy.sparse import diags
 
 class Problem_64:
-    def __init__(self,n,phi):
+    def __init__(self,n,rho):
         self.n = n
-        self.phi = phi
+        self.rho = rho
         self.h = 1.0/(n+1)
     
-    
 
+# Returns vector f_k(x) 
     def function_k(self,x):
-        phi = self.phi
+
+        rho = self.rho
         h = self.h
         n = self.n
-
-        '''
-        THIS IS TOO COSTLY FOR N = 1E5
-        f = defaultdict(lambda:0)
-        for k in range(n):
-            if k == 1:
-                f[k] = 2*x(k) + phi*h**2*np.sinh(phi*x(k)) - x(k+1)
-            elif k == self.n:
-                f[k] = 2*x(k) + phi*h**2*np.sinh(phi*x(k)) - x(k-1) -1
-            else:
-                f[k] = 2*x(k) + phi*h**2*np.sinh(phi*x(k)) - x(k+1) -x(k-1)
-        return f'''
-    
-        common_term = 2 * x +(phi * h**2) * np.sinh(phi * x)
-
         f = np.zeros(n)
+        
+        # intermediate term: common to all indexes
+        term = 2 * x +(rho * h**2) * np.sinh(rho * x)
 
-        f[1:-1] = common_term[1:-1] -x[:-2] - x[2:]
-        f[0] = common_term[0] - x[1]
-        f[-1] = common_term[-1] - x[-2] -1
+        # construction of all terms
+        # k = 1 (=0 for python indexes)
+        f[0] = term[0] - x[1]
+             
+        # 1 < k < n
+        f[1:-1] = term[1:-1] - x[:-2] - x[2:]
+        
+        #  k = n (=n-1 for python indexes)
+        f[-1] = term[-1] - x[-2] -1
 
-        return f.ravel()
+        return f
     
-    def get_jacobian_diagonal(self, x):
-        return 2 + (self.phi**2 * self.h**2) * np.cosh(self.phi * x)
+# Returns function F(x) = 0.5 * ||f(x)||^2
+    def function(self, x):
+        
+        f = self.function_k(x)
+        return 0.5 * np.dot(f, f)
+
     
-    
+
+# Returns exact gradient
     def gradient(self,x):
 
         f = self.function_k(x)
-
         n = self.n
-        phi = self.phi
+        rho = self.rho
         h = self.h
+        grad = np.zeros(n)
 
-        diagonal = self.get_jacobian_diagonal(x)
+        # computation of d(f_k) / d(x_k)
+        diag = 2 + ((rho**2) * (h**2) * np.cosh(rho * x))
 
-        gradient = np.zeros(n)
-        
-        #∂F/∂x_1 = -f_0 + f_1 * diagonal[1] - f_2
-        gradient[1:-1] = (f[1:-1] * diagonal[1:-1]) - f[:-2] - f[2:]
-        
-        gradient[0] = (f[0] * diagonal[0]) - f[1]
-        gradient[-1] = (f[-1] * diagonal[-1]) - f[-2] 
+        # contribution of [f_k] (for all k)
+        grad += f * diag
 
-        return gradient
+        # contribution of [f_{k-1}] ( k > 0)
+        grad[1:] += (-1) * f[:-1]
+
+        # contribution of [f_{k+1}] ( k < n-1)
+        grad[:-1] += (-1) * f[1:]
+
+        return grad
     
+
+# Returns exact sparse Hessian: J.T @ J + Second order terms
     def hessian(self,x):
 
         f = self.function_k(x)
 
         n = self.n
-        phi = self.phi
+        rho = self.rho
         h = self.h
 
-        diagonal_J = self.get_jacobian_diagonal(x)
-        off_diagonal_J = -1*np.ones(n-1)
+        # computation of d(f_k) / d(x_k)
+        diag = 2 + ((rho**2) * (h**2) * np.cosh(rho * x))
+        
+        # computation of d(f_k) / d(x_{k-1}
+        lower_diag = -1 * np.ones(n-1)
+        
+        # computation of d(f_k) / d(x_{k+1}
+        upper_diag = -1 * np.ones(n-1)
 
-        J = diags([off_diagonal_J, diagonal_J, off_diagonal_J],
-                  [-1, 0, 1],
-                  shape=(n,n),
-                  format='csr')
-        first_term = J.T @ J
+        # tridiagonal matrix J
+        J = diags([lower_diag, diag, upper_diag],[-1, 0, 1], shape=(n,n), format='csr')
+        
+        # first order terms
+        first_order = J.T @ J
+        
+        # computation of d^2(f_k) / d(x_k)^2
+        diag_2 =  ((rho**3) * (h**2) * np.sinh(rho * x)) * f
+        
+        # second order terms
+        second_order = diags(diag_2, 0, shape=(n,n), format='csr')
 
-        second_sub_term = (phi**3 * h**2) * np.sinh(phi * x) 
-        second_term = diags(f*second_sub_term, 0, shape=(n,n),format='csr')
-
-        hessian = first_term + second_term
-        return hessian
-
-    def function(self, x):
-        f = self.function_k(x)
-        return  0.5*np.dot(f,f)
+        return first_order + second_order
