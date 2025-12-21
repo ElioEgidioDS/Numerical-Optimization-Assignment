@@ -6,6 +6,7 @@ from Problems.Problem_64 import Problem_64
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 from Methods.TruncatedNewton_provisory import truncated_newton
+from scipy.optimize import minimize
 
 def main():
 
@@ -14,11 +15,15 @@ def main():
     import time
 
     n = [2, 10**3, 10**4, 10**5]
-    tolerances = [1e-4, 1e-6, 1e-8, 1e-10]
+    tolerances = [1e-4, 1e-5, 1e-6, 1e-8]
+    bck_trk_C1 = [0.2, 0.4, 0.6, 0.8]
+    bck_trk_phi = [0.2, 0.4, 0.6, 0.8]
 
-    np.random.seed(359806)
+
+    np.random.seed(352283)
 
     x0 = [np.ones(x) for x in n]
+    x0_50 = np.ones(50)
     x_ground = [np.zeros(x) for x in n]
     xRand = [np.random.uniform(low=x-1, high=x+1, size=(5, x.shape[0])) for x in x0]
 
@@ -28,13 +33,28 @@ def main():
 
         print(f"\n=== Running experiments with tol = {tol:.1e} ===")
 
-        modified_newt = NewtonMethod(tol, 1000)
+        modified_newt = NewtonMethod(tol, 1000, 0.5, 0.5)
 
         x_initial_results = {}
         x_initial_results_tr = {}
         x_ground_results = {}
         x_random_results = {}
         x_random_results_tr = {}
+
+        problem_64 = Problem_64(50, 10)
+        my_x, _, _, _, _ = modified_newt.minimize(problem_64, x0_50, mode="exact")
+
+        # 2. Solve with SCIPY
+        # (Assuming problem.function and problem.gradient are defined)
+        scipy_res = minimize(fun=problem_64.function, 
+                            x0=x0_50, 
+                            jac=problem_64.gradient, 
+                            method='BFGS', 
+                            tol=tol)
+
+        # 3. Compare
+        diff = np.linalg.norm(my_x - scipy_res.x)
+        print(f"Difference between My Newton and Scipy w tol {tol}: {diff:.2e}")
 
 
         
@@ -138,7 +158,7 @@ def main():
                 iterations.append(steps)
                 converges_list.append(converges)
 
-                if tol == 1e-4:
+                '''if tol == 1e-4:
 
                     start_time_tr = time.time()
                     x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = truncated_newton(problem_64.function, problem_64.gradient, problem_64.hessian, starting_point,tol,1000,1000,'sl')
@@ -151,7 +171,7 @@ def main():
                     final_scores_tr.append(final_score_tr)
                     iterations_tr.append(steps_tr)
                     converges_list_tr.append(converges_tr)
-                    path_history_tr.append(path_tr)
+                    path_history_tr.append(path_tr)'''
 
 
             x_random_results[n_dim] = {
@@ -205,7 +225,7 @@ def main():
 
     df_nm = pd.DataFrame(table_nm)
     df_nm.to_csv(r"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\random_results.csv",sep=',')
-    print("\nSummary table:")
+    print("\nsummary table for Newton Method:")
     print(df_nm)
 
     for tol, res in all_results.items():
@@ -224,6 +244,7 @@ def main():
 
     df_tr = pd.DataFrame(table_tr)
     df_tr.to_csv(r"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\random_results_tr.csv",sep=',')
+    print("\nsummary table for Truncated Newton Method:")
     print(df_tr)
 
 
