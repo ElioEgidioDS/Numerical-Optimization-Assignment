@@ -72,14 +72,10 @@ class NewtonMethod:
                     except LinAlgError:
                         tau = max(2 * tau, B)
 
-                if 'R' not in locals():
-                    print(f"Failed to factorize Hessian at iter {k} after 20 attempts.")
-                    return x, np.array(path), np.linalg.norm(gradient), False, k
                
                 p_mn = cho_solve_banded((R,True), -gradient)
                 #check
-                grad_norm = np.linalg.norm(gradient)
-                print(f"Iter {k}: Grad Norm = {grad_norm:.4e}, Alpha = {alpha}")
+                
 
                 alpha = bcktrk.backtrack(p_mn,x,problem.function,1,gradient)
                 

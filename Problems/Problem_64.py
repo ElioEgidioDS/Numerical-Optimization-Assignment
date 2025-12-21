@@ -7,6 +7,11 @@ class Problem_64:
         self.n = n
         self.rho = rho
         self.h = 1.0/(n+1)
+
+    def _safe_arg(self, x):
+        # Clamps the input to the range [-700, 700]
+        # exp(710) is the limit for 64-bit floats.
+        return np.clip(self.rho * x, -300, 300)
     
 
 # Returns vector f_k(x) 
@@ -17,8 +22,10 @@ class Problem_64:
         n = self.n
         f = np.zeros(n)
         
+        arg = self._safe_arg(x)
+
         # intermediate term: common to all indexes
-        term = 2 * x +(rho * h**2) * np.sinh(rho * x)
+        term = 2 * x +(rho * h**2) * np.sinh(arg)
 
         # construction of all terms
         # k = 1 (=0 for python indexes)
@@ -49,8 +56,10 @@ class Problem_64:
         h = self.h
         grad = np.zeros(n)
 
+        arg = self._safe_arg(x)
+
         # computation of d(f_k) / d(x_k)
-        diag = 2 + ((rho**2) * (h**2) * np.cosh(rho * x))
+        diag = 2 + ((rho**2) * (h**2) * np.cosh(arg))
 
         # contribution of [f_k] (for all k)
         grad += f * diag
@@ -73,8 +82,10 @@ class Problem_64:
         rho = self.rho
         h = self.h
 
+        arg = self._safe_arg(x)
+
         # computation of d(f_k) / d(x_k)
-        diag = 2 + ((rho**2) * (h**2) * np.cosh(rho * x))
+        diag = 2 + ((rho**2) * (h**2) * np.cosh(arg))
         
         # computation of d(f_k) / d(x_{k-1}
         lower_diag = -1 * np.ones(n-1)
@@ -89,7 +100,7 @@ class Problem_64:
         first_order = J.T @ J
         
         # computation of d^2(f_k) / d(x_k)^2
-        diag_2 =  ((rho**3) * (h**2) * np.sinh(rho * x)) * f
+        diag_2 =  ((rho**3) * (h**2) * np.sinh(arg)) * f
         
         # second order terms
         second_order = diags(diag_2, 0, shape=(n,n), format='csr')

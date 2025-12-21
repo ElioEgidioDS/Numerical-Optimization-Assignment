@@ -5,7 +5,7 @@ from Methods.NewtonMethod import NewtonMethod
 from Problems.Problem_64 import Problem_64
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
-from Methods.TruncatedNewton_provisory import truncated_newton
+from Methods.TruncatedNewtonMethod import TruncatedNewtonMethod
 from scipy.optimize import minimize
 
 def main():
@@ -34,6 +34,7 @@ def main():
         print(f"\n=== Running experiments with tol = {tol:.1e} ===")
 
         modified_newt = NewtonMethod(tol, 1000, 0.5, 0.5)
+        truncated_newt = TruncatedNewtonMethod(tol, 1000, 1000, 'sl')
 
         x_initial_results = {}
         x_initial_results_tr = {}
@@ -41,7 +42,7 @@ def main():
         x_random_results = {}
         x_random_results_tr = {}
 
-        problem_64 = Problem_64(50, 10)
+        '''problem_64 = Problem_64(50, 10)
         my_x, _, _, _, _ = modified_newt.minimize(problem_64, x0_50, mode="exact")
 
         # 2. Solve with SCIPY
@@ -54,7 +55,7 @@ def main():
 
         # 3. Compare
         diff = np.linalg.norm(my_x - scipy_res.x)
-        print(f"Difference between My Newton and Scipy w tol {tol}: {diff:.2e}")
+        print(f"Difference between My Newton and Scipy w tol {tol}: {diff:.2e}")'''
 
 
         
@@ -73,7 +74,7 @@ def main():
 
             #TR
             start_time_tr = time.time()
-            x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = truncated_newton(problem_64.function, problem_64.gradient, problem_64.hessian, starting_point, tol, 1000, 1000, 'sl')
+            x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = truncated_newt.truncated_newton(problem_64.function, problem_64.gradient, problem_64.hessian, starting_point)
             end_time_tr = time.time() - start_time_tr
 
             final_score_tr = problem_64.function(x_tr)
@@ -158,10 +159,10 @@ def main():
                 iterations.append(steps)
                 converges_list.append(converges)
 
-                '''if tol == 1e-4:
+                if tol == 1e-4:
 
                     start_time_tr = time.time()
-                    x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = truncated_newton(problem_64.function, problem_64.gradient, problem_64.hessian, starting_point,tol,1000,1000,'sl')
+                    x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = truncated_newt.truncated_newton(problem_64.function, problem_64.gradient, problem_64.hessian, starting_point,tol,1000,1000,'sl')
                     end_time_tr = time.time() - start_time_tr
 
                     final_score_tr = problem_64.function(x_tr)
@@ -171,7 +172,7 @@ def main():
                     final_scores_tr.append(final_score_tr)
                     iterations_tr.append(steps_tr)
                     converges_list_tr.append(converges_tr)
-                    path_history_tr.append(path_tr)'''
+                    path_history_tr.append(path_tr)
 
 
             x_random_results[n_dim] = {
