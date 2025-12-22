@@ -64,7 +64,6 @@ class TruncatedNewtonMethod:
 
         if not issparse(B):
             B = csr_matrix(B)
-        B = B.tocsc()
 
     # Incomplete LU factorization B ~ L * U 
         try: 
@@ -124,8 +123,6 @@ class TruncatedNewtonMethod:
                     return spsolve_triangular(U, y, lower=False)
                     
         return spsolve_triangular(U, y, lower=False)
-
-
 
 
     def truncated_newton(self, f, gradf, hessf, x0):

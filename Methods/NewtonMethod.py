@@ -7,9 +7,11 @@ from scipy.linalg import cholesky_banded, cho_solve_banded, LinAlgError
 
 
 class NewtonMethod:
-    def __init__(self, tol, max_n):
+    def __init__(self, tol, max_n, bck_trk_C1, bck_trk_phi):
         self.tol = tol
         self.max_n = max_n
+        self.bck_trk_c1 = bck_trk_C1
+        self.bck_trk_phi = bck_trk_phi
 
     def convert_to_banded(self, sparse_mat):
 
@@ -25,15 +27,17 @@ class NewtonMethod:
         second_lower = dense_mat.diagonal(k=-2)
 
         #populate banded representation
-        banded_format[0, 2:] = second_lower #dim: n-2
-        banded_format[1, 1:] = first_lower #dim: n-1
-        banded_format[2, :] = diag #dim: n
+        banded_format[0, :] = diag #dim: n-2
+        banded_format[1, : n-1] = first_lower #dim: n-1
+        banded_format[2, : n-2] = second_lower #dim: n
 
         return banded_format
 
 
     def minimize(self, problem,x0, mode, k=0):
-        bcktrk = Backtracking(0.5,0.5,100)
+        C1 = self.bck_trk_c1
+        phi = self.bck_trk_phi
+        bcktrk = Backtracking(C1,phi,100)
         x = x0.copy()
         path = [x.copy()]
         B = 1e-3
@@ -46,7 +50,7 @@ class NewtonMethod:
                 gradient = problem.gradient(x)
                 hessian = problem.hessian(x)
 
-                if np.linalg.norm(gradient) < self.tol: #*max(1,np.linalg.norm(gradient)) #CHECK FOR OTHER STOPPING CRITERIONS
+                if np.linalg.norm(gradient, ord=np.inf) < self.tol: #*max(1,np.linalg.norm(gradient)) #CHECK FOR OTHER STOPPING CRITERIONS
                     converge = True
                     return x, np.array(path), np.linalg.norm(gradient), converge, k
                 
@@ -59,7 +63,7 @@ class NewtonMethod:
                     try:
                         Bk = hessian + tau*I
                         B_k_banded = self.convert_to_banded(Bk)
-                        R = cholesky_banded(B_k_banded)
+                        R = cholesky_banded(B_k_banded, lower= True)
                     
 
                         #p_mn = lu_fact.solve(-gradient)
@@ -67,8 +71,12 @@ class NewtonMethod:
                         break
                     except LinAlgError:
                         tau = max(2 * tau, B)
+
                
-                p_mn = cho_solve_banded((R,False), -gradient)
+                p_mn = cho_solve_banded((R,True), -gradient)
+                #check
+                
+
                 alpha = bcktrk.backtrack(p_mn,x,problem.function,1,gradient)
                 
                 #print(f"{k}:{np.linalg.norm(gradient)}")
