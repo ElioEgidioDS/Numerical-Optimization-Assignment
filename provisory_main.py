@@ -33,8 +33,8 @@ def main():
 
         print(f"\n=== Running experiments with tol = {tol:.1e} ===")
 
-        modified_newt = NewtonMethod(tol, 5000, 0.5, 0.5)
-        truncated_newt = TruncatedNewtonMethod(tol, 5000, 5000, 'sl')
+        modified_newt = NewtonMethod(tol, 1000, 0.5, 0.5)
+        truncated_newt = TruncatedNewtonMethod(tol, 1000, 1000, 'sl')
 
         x_initial_results = {}
         x_initial_results_tr = {}
@@ -63,7 +63,7 @@ def main():
 
         for starting_point in x0:
 
-            problem_64 = Problem_64(starting_point.shape[0], 1)
+            problem_64 = Problem_64(starting_point.shape[0], 10)
 
             #NM
             start_time = time.time()
@@ -124,7 +124,7 @@ def main():
         for starting_size in xRand:
 
             n_dim = starting_size.shape[1]
-            problem_64 = Problem_64(n_dim, 1)
+            problem_64 = Problem_64(n_dim, 10)
 
             #NM
             path_history = []
