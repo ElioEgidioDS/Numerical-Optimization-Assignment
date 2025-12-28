@@ -5,25 +5,39 @@ from scipy.sparse import issparse, csr_matrix, csc_matrix
 
 class TruncatedNewtonMethod:
 
-    def __init__(self, tol, kmax, jmax, order_conv='sl'):
+    def __init__(self, tol, kmax, jmax, order_conv='sl', rho=0.5, c1=1e-4):
         self.tol = tol       
         self.kmax = kmax    
         self.jmax = jmax      
         self.order_conv = order_conv
+        self.rho = rho
+        self.c1 = c1
 
 
     def line_search(self, f, gradf, xk, p, alpha=1, rho=0.5, c1=1e-4):
         fxk = f(xk)
         grad_fxk = gradf(xk)
-        
-        # Calcolo pendenza lungo la direzione p
         slope = np.dot(grad_fxk, p) 
+
         if slope >= 0: return 0
 
-        while (f(xk + alpha * p) > fxk + (c1 * alpha * slope)):
+        while alpha > 1e-12: 
+            try:
+                
+                x_next = xk + alpha * p
+                f_next = f(x_next)
+                
+                if f_next <= fxk + (c1 * alpha * slope):
+                    return alpha
+            
+            except (OverflowError, ValueError, RuntimeWarning):
+                pass
+            
             alpha *= rho
-            if alpha < 1e-12: break # to avoid inf loops
-        return alpha
+        
+        # alpha became too small
+        return 0.0
+    
 
     def forcing_term(self, gradient_norm):
         if (self.order_conv == 'l'):
@@ -152,7 +166,7 @@ class TruncatedNewtonMethod:
             if np.dot(p_tn, grad_xk) >= 0:
                 p_tn = c
 
-            alpha = self.line_search(f, gradf, xk, p_tn, alpha=1, rho=0.5, c1=1e-4)
+            alpha = self.line_search(f, gradf, xk, p_tn, alpha=1, rho=self.rho, c1=self.c1)
             
             xk = xk + alpha * p_tn   
             xk_sequence.append(xk.copy())

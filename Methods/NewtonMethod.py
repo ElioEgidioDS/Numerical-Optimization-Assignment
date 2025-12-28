@@ -7,11 +7,35 @@ from scipy.linalg import cholesky_banded, cho_solve_banded, LinAlgError
 
 
 class NewtonMethod:
-    def __init__(self, tol, max_n, bck_trk_C1, bck_trk_phi):
+    def __init__(self, tol, max_n, bck_trk_C1, bck_trk_rho):
         self.tol = tol
         self.max_n = max_n
         self.bck_trk_c1 = bck_trk_C1
-        self.bck_trk_phi = bck_trk_phi
+        self.bck_trk_rho = bck_trk_rho
+
+    def line_search(self, f, gradf, xk, p, alpha=1, rho=0.5, c1=1e-4):
+        fxk = f(xk)
+        grad_fxk = gradf(xk)
+        slope = np.dot(grad_fxk, p) 
+
+        if slope >= 0: return 0
+
+        while alpha > 1e-12: 
+            try:
+                
+                x_next = xk + alpha * p
+                f_next = f(x_next)
+                
+                if f_next <= fxk + (c1 * alpha * slope):
+                    return alpha
+            
+            except (OverflowError, ValueError, RuntimeWarning):
+                pass
+            
+            alpha *= rho
+        
+        # alpha became too small
+        return 0.0
 
     def convert_to_banded(self, sparse_mat):
 
@@ -35,9 +59,6 @@ class NewtonMethod:
 
 
     def minimize(self, problem,x0):
-        C1 = self.bck_trk_c1
-        phi = self.bck_trk_phi
-        bcktrk = Backtracking(C1,phi,100)
         x = x0.copy()
         path = [x.copy()]
         B = 1e-3
@@ -72,10 +93,7 @@ class NewtonMethod:
 
             
             p_mn = cho_solve_banded((R,True), -gradient)
-            #check
-            
-
-            alpha = bcktrk.backtrack(p_mn,x,problem.function,1,gradient)
+            alpha = self.line_search(problem.function, gradient, x, p_mn, alpha=1, rho=self.bck_trk_rho, c1=self.bck_trk_c1)
             
             #print(f"{k}:{np.linalg.norm(gradient)}")
             x = x + alpha * p_mn
