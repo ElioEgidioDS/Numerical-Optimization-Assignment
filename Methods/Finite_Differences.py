@@ -13,7 +13,7 @@ class FiniteDifferences:
 
     # 1. STEP SIZE MANAGEMENT
     @staticmethod
-    def calculate_step(x, k, mode='adaptive'):
+    def calculate_step(x,mode, k):
         """
         Calculates the optimal perturbation step h: h = epsilon * max(|x|, 1.0).
         k: exponent for epsilon (e.g., k=6 -> epsilon=1e-6).
@@ -34,14 +34,14 @@ class FiniteDifferences:
 
 
     # 2. APPROXIMATE GRADIENT
-    def approximate_gradient(self, x, k_step=6, scheme='centered'):
+    def approximate_gradient(self, x, k_step=6, scheme='centered', mode='adaptive'):
         """
         Calculates the gradient for F(x) = 0.5 * ||f(x)||^2 exploiting tridiagonal 
         sparsity (simulating A.T @ f(x) where J_ij = dA_i/dx_j).
         Computational Cost: O(N) instead of O(N^2).
         """
         n = x.size
-        h_vec = self.calculate_step(x, k=k_step, mode='adaptive')
+        h_vec = self.calculate_step(x,mode, k=k_step )
         
         f0 = self.problem.function_k(x)
         if f0.ndim == 0:

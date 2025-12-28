@@ -34,7 +34,7 @@ class NewtonMethod:
         return banded_format
 
 
-    def minimize(self, problem,x0, mode, k=0):
+    def minimize(self, problem,x0):
         C1 = self.bck_trk_c1
         phi = self.bck_trk_phi
         bcktrk = Backtracking(C1,phi,100)
@@ -43,53 +43,47 @@ class NewtonMethod:
         B = 1e-3
         I = eye(x0.shape[0], format="csr")
         converge = False
-
-        if mode == "exact":
             
-            for k in range(self.max_n):
-                gradient = problem.gradient(x)
-                hessian = problem.hessian(x)
+        for i in range(self.max_n):
+            gradient = problem.gradient(x)
+            hessian = problem.hessian(x)
 
-                if np.linalg.norm(gradient, ord=np.inf) < self.tol: #*max(1,np.linalg.norm(gradient)) #CHECK FOR OTHER STOPPING CRITERIONS
-                    converge = True
-                    return x, np.array(path), np.linalg.norm(gradient), converge, k
+            if np.linalg.norm(gradient, ord=np.inf) < self.tol: #*max(1,np.linalg.norm(gradient)) #CHECK FOR OTHER STOPPING CRITERIONS
+                converge = True
+                return x, np.array(path), np.linalg.norm(gradient), converge, i
+            
+            if hessian.diagonal().min() > 0:
+                tau = 0
+            else:
+                tau = B - hessian.diagonal().min()
+            
+            for j in range(20):
+                try:
+                    Bk = hessian + tau*I
+                    B_k_banded = self.convert_to_banded(Bk)
+                    R = cholesky_banded(B_k_banded, lower= True)
                 
-                if hessian.diagonal().min() > 0:
-                    tau = 0
-                else:
-                    tau = B - hessian.diagonal().min()
-                
-                for j in range(20):
-                    try:
-                        Bk = hessian + tau*I
-                        B_k_banded = self.convert_to_banded(Bk)
-                        R = cholesky_banded(B_k_banded, lower= True)
+
+                    #p_mn = lu_fact.solve(-gradient)
                     
+                    break
+                except LinAlgError:
+                    tau = max(2 * tau, B)
 
-                        #p_mn = lu_fact.solve(-gradient)
-                        
-                        break
-                    except LinAlgError:
-                        tau = max(2 * tau, B)
+            
+            p_mn = cho_solve_banded((R,True), -gradient)
+            #check
+            
 
-               
-                p_mn = cho_solve_banded((R,True), -gradient)
-                #check
-                
+            alpha = bcktrk.backtrack(p_mn,x,problem.function,1,gradient)
+            
+            #print(f"{k}:{np.linalg.norm(gradient)}")
+            x = x + alpha * p_mn
+            path.append(x.copy())
 
-                alpha = bcktrk.backtrack(p_mn,x,problem.function,1,gradient)
-                
-                #print(f"{k}:{np.linalg.norm(gradient)}")
-                x = x + alpha * p_mn
-                path.append(x.copy())
+        print("NM DID NOT CONVERGE")
+        print("final iter: ",i)
+        print("final alpha: ", alpha)
+        print("final norm of the gradient: ",np.linalg.norm(gradient))
 
-            print("DID NOT CONVERGE")
-            print("final k: ",k)
-            print("final alpha: ", alpha)
-            print("final norm of the gradient: ",np.linalg.norm(gradient))
-
-            return x, np.array(path), np.linalg.norm(gradient), converge, self.max_n
-
-
-        elif mode == "fd":
-            ...#use approximated gradient
+        return x, np.array(path), np.linalg.norm(gradient), converge, self.max_n

@@ -1,5 +1,0 @@
-,method,tol,n,time,iterations,converges,final_score,norm_gradient
-0,Truncated Newton,0.0001,2,,,True,,
-1,Truncated Newton,0.0001,1000,,,True,,
-2,Truncated Newton,0.0001,10000,,,True,,
-3,Truncated Newton,0.0001,100000,,,True,,

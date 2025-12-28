@@ -138,7 +138,7 @@ class TruncatedNewtonMethod:
             
             if grad_xk_norm < self.tol:
                 flag_convergence = True
-                return xk, np.array(xk_sequence), grad_xk_norm, flag_convergence, k
+                return xk, grad_xk_norm, flag_convergence, k, np.array(xk_sequence)
             
             eta_k = self.forcing_term(grad_xk_norm)
 
@@ -160,9 +160,9 @@ class TruncatedNewtonMethod:
             grad_xk = gradf(xk)
             grad_xk_norm = np.linalg.norm(grad_xk)
 
-        print("DID NOT CONVERGE")
+        print("TRN DID NOT CONVERGE")
         print("final k: ",k)
         print("final alpha: ", alpha)
         print("final norm of the gradient: ",grad_xk_norm)
 
-        return xk, np.array(xk_sequence), grad_xk_norm, flag_convergence, k
+        return xk, grad_xk_norm, flag_convergence, k, np.array(xk_sequence)
