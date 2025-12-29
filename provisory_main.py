@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 from Methods.NewtonMethod import NewtonMethod
 from Problems.Problem_31 import Problem_31
-from Problems.Problem_31_fd import Problem_31_fd
 from Problems.Problem_52 import Problem_52
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
@@ -647,14 +646,14 @@ def main():
     print("TOL CONCLUDED")
     #exit()
 
-    x_initial_bck_df,x_initial_tr_bck_df, x_random_bck_df,x_random_tr_bck_df = iterate_bcktrk(x0,xRand)
+    '''x_initial_bck_df,x_initial_tr_bck_df, x_random_bck_df,x_random_tr_bck_df = iterate_bcktrk(x0,xRand)
     x_initial_bck_df.to_csv(r"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\x_initial_nm_bck.csv",sep=',')
     x_initial_tr_bck_df.to_csv(r"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\x_initial_tr_bck.csv",sep=',')
     x_random_bck_df.to_csv(r"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\x_random_nm_bck.csv",sep=',')
     x_random_tr_bck_df.to_csv(r"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\x_random_tr_bck.csv",sep=',')
     
     print("BCK concluded")
-    exit()
+    exit()'''
 
 
 

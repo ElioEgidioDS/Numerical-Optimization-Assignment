@@ -174,7 +174,7 @@ def iterate_fd(x0, xRand,problem_main):
     return x_initial_fd_df,x_initial_fd_tr_df, x_random_fd_df,x_random_fd_tr_df
 
 def iterate_tol(x0, xRand, problem_main):
-    tolerances = [1e-4, 1e-5, 1e-6, 1e-8]
+    tolerances = [1e-4, 1e-6, 1e-8]
     all_results = {}
 
     for tol in tolerances:

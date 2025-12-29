@@ -13,10 +13,10 @@ class NewtonMethod:
         self.bck_trk_c1 = bck_trk_C1
         self.bck_trk_rho = bck_trk_rho
 
-    def line_search(self, f, gradf, xk, p, alpha=1, rho=0.5, c1=1e-4):
+    def line_search(self, f, gradfxk, xk, p, alpha=1, rho=0.5, c1=1e-4):
         fxk = f(xk)
-        grad_fxk = gradf(xk)
-        slope = np.dot(grad_fxk, p) 
+        #grad_fxk = gradf(xk)
+        slope = np.dot(gradfxk, p) 
 
         if slope >= 0: return 0
 

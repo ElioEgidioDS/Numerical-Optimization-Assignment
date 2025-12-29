@@ -14,9 +14,9 @@ class TruncatedNewtonMethod:
         self.c1 = c1
 
 
-    def line_search(self, f, gradf, xk, p, alpha=1, rho=0.5, c1=1e-4):
+    def line_search(self, f, grad_fxk, xk, p, alpha=1, rho=0.5, c1=1e-4):
         fxk = f(xk)
-        grad_fxk = gradf(xk)
+        #grad_fxk = gradf(xk)
         slope = np.dot(grad_fxk, p) 
 
         if slope >= 0: return 0
@@ -166,7 +166,7 @@ class TruncatedNewtonMethod:
             if np.dot(p_tn, grad_xk) >= 0:
                 p_tn = c
 
-            alpha = self.line_search(f, gradf, xk, p_tn, alpha=1, rho=self.rho, c1=self.c1)
+            alpha = self.line_search(f, grad_xk, xk, p_tn, alpha=1, rho=self.rho, c1=self.c1)
             
             xk = xk + alpha * p_tn   
             xk_sequence.append(xk.copy())
