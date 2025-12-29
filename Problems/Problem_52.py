@@ -4,6 +4,7 @@ from scipy.sparse import diags
 class Problem_52:
     def __init__(self, n):
         self.n = n
+        self.name = "p52"
         # Starting point consigliato x0 = 0
         self.x0 = np.zeros(n)
 

@@ -7,7 +7,7 @@ from scipy.linalg import cholesky_banded, cho_solve_banded, LinAlgError
 
 
 class NewtonMethod:
-    def __init__(self, tol, max_n, bck_trk_C1, bck_trk_rho):
+    def __init__(self, tol, max_n, bck_trk_rho, bck_trk_C1):
         self.tol = tol
         self.max_n = max_n
         self.bck_trk_c1 = bck_trk_C1

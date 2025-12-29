@@ -1,4 +1,4 @@
-class Problem_31_fd:
+class Problem_fd:
     def __init__(self, problem, gradient, hessian):
         self.function = problem.function
         self.gradient = gradient                 
