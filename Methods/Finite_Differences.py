@@ -1,170 +1,306 @@
 import numpy as np
 from scipy import sparse
+from typing import Callable, Optional
+from scipy import sparse
 
-class FiniteDifferences:    
+from Problems.Problem_31 import Problem_31 as Problem31
+
+class FiniteDifferences:
+    """
+    Efficient finite differences for least-squares problems:
+
+        F(x) = 0.5 * || f(x) ||^2
+
+    requirements:
+        - problem.function_k(x) must return the residual vector f(x), shape (n,)
+
+    structure exploited:
+        - jacobian J(x) of f(x) is assumed tridiagonal
+        - hessian of F is then typically pentadiagonal, e.g., J^T J (+ corrections)
+    """
+
     def __init__(self, problem_instance):
-        """
-        Initializes the instance with a problem object.
-        The 'problem_instance' object MUST have a .function_k(x) method
-        that returns the residual vector (for Least Squares problems).
-        """
         self.problem = problem_instance
-        
 
-    # 1. STEP SIZE MANAGEMENT
+    # step size utilities
     @staticmethod
-    def calculate_step(x,mode, k):
+    def step_vector(
+        x: np.ndarray,
+        k: int,
+        mode: str,
+        x_ref: Optional[np.ndarray] = None,
+        zero_floor: float = 1.0
+    ):
         """
-        Calculates the optimal perturbation step h: h = epsilon * max(|x|, 1.0).
-        k: exponent for epsilon (e.g., k=6 -> epsilon=1e-6).
-        """
-        epsilon = 10.0**(-k)
-        
-        if mode == 'scalar':
-            return np.full_like(x, epsilon, dtype=float)
-        
-        elif mode == 'adaptive':
-            threshold = 1.0  
-            magnitude = np.abs(x)
-            safe_magnitude = np.where(magnitude < threshold, threshold, magnitude)
-            return epsilon * safe_magnitude
-        
-        else:
-            raise ValueError("Mode not supported. Use 'scalar' or 'adaptive'.")
+        builds the perturbation step vector h.
 
+        mode:
+            - "scalar":      h = 10^{-k}
+            - "adaptive":    h_i = 10^{-k} * |x_ref_i|  (if x_ref is None, uses x)
 
-    # 2. APPROXIMATE GRADIENT
-    def approximate_gradient(self, x, k_step=6, scheme='centered', mode='adaptive'):
+        zero_floor:
+            - if > 0, enforces h_i >= 10^{-k} * zero_floor to avoid exactly zero steps
+              (set to 0.0 if you want the formula strictly h_i = 10^{-k} |x_i|).
         """
-        Calculates the gradient for F(x) = 0.5 * ||f(x)||^2 exploiting tridiagonal 
-        sparsity (simulating A.T @ f(x) where J_ij = dA_i/dx_j).
-        Computational Cost: O(N) instead of O(N^2).
+        eps = 10.0 ** (-k)
+
+        if mode == "scalar":
+            return np.full_like(x, eps, dtype=float)
+
+        if mode == "adaptive":
+            if x_ref is None:
+                x_ref = x
+            h = eps * np.abs(x_ref).astype(float)
+
+            #optional safety floor to avoid zero steps (put it for numerical stability)
+            if zero_floor > 0.0:
+                floor = eps * float(zero_floor)
+                h = np.maximum(h, floor)
+
+            return h
+
+        raise ValueError("mode must be 'scalar' or 'adaptive'.")
+
+    # tridiagonal jacobian
+    def approximate_jacobian_tridiag_diagonals(
+        self,
+        x: np.ndarray,
+        k_step: int,
+        step_mode: str,
+        scheme: str = "centered",
+        x_ref: Optional[np.ndarray] = None,
+        zero_floor: float = 1.0
+    ):
+        """
+        approximates the three diagonals of the tridiagonal jacobian J of f(x):
+
+            - d_lower[j] = J_{j+1, j}   for j = 0..n-2  (offset -1)
+            - d_main[i]  = J_{i, i}
+            - d_upper[i] = J_{i, i+1}   for i = 0..n-2  (offset +1)
         """
         n = x.size
-        h_vec = self.calculate_step(x,mode, k=k_step )
-        
-        f0 = self.problem.function_k(x)
-        if f0.ndim == 0:
-            raise ValueError("The function_k method must return a residual vector.")
+        h = self.step_vector(x, k=k_step, mode=step_mode, x_ref=x_ref, zero_floor=zero_floor)
 
-        d_main = np.zeros(n)
-        d_upper = np.zeros(n-1)
-        d_lower = np.zeros(n-1)
-        p = np.zeros(n)
-        
-        for offset in [0, 1, 2]:
-            indices = np.arange(offset, n, 3)
-            if indices.size == 0: continue
-            
-            p[indices] = h_vec[indices]
-            
-            # Calculate finite differences
-            if scheme == 'forward':
-                f_plus = self.problem.function_k(x + p)
-                diff_vec = (f_plus - f0)
-                step = h_vec
-            elif scheme == 'centered':
-                f_plus = self.problem.function_k(x + p)
-                f_minus = self.problem.function_k(x - p)
-                diff_vec = (f_plus - f_minus) / 2.0
-                step = h_vec 
-            
-            p[indices] = 0.0 # Reset perturbation
-                
-            # Extract Main Diagonal (J_ii)
-            d_main[indices] = diff_vec[indices] / step[indices]
-            
-            # Extract Lower Diagonal (J_{i+1, i})
-            # Perturbation on column 'j' affects row 'j+1'
-            cols_lower = indices[indices < n-1]
-            rows_lower = cols_lower + 1
-            d_lower[cols_lower] = diff_vec[rows_lower] / step[cols_lower]
-            
-            # Extract Upper Diagonal (J_{i-1, i})
-            # Perturbation on column 'j' affects row 'j-1'
-            cols_upper = indices[indices > 0]
-            rows_upper = cols_upper - 1
-            d_upper[rows_upper] = diff_vec[rows_upper] / step[cols_upper]
+        f0 = self.problem.function_k(x).ravel()
+        if f0.shape[0] != n:
+            raise ValueError("function_k(x) must return a residual vector of length n.")
 
-        # Construct sparse Jacobian
-        J = sparse.diags([d_lower, d_main, d_upper], [-1, 0, 1], shape=(n, n))
-        
-        # Gradient: J.T @ f(x)
-        grad = J.T @ f0
-        
-        return grad
+        d_main = np.zeros(n, dtype=float)
+        d_lower = np.zeros(n - 1, dtype=float)
+        d_upper = np.zeros(n - 1, dtype=float)
+
+        p = np.zeros(n, dtype=float)
+
+        for offset in (0, 1, 2):
+            idx = np.arange(offset, n, 3)
+            if idx.size == 0:
+                continue
+
+            p[idx] = h[idx]
+
+            if scheme == "forward":
+                f_plus = self.problem.function_k(x + p).ravel()
+                diff = f_plus - f0
+                scale = 1.0
+            elif scheme == "centered":
+                f_plus = self.problem.function_k(x + p).ravel()
+                f_minus = self.problem.function_k(x - p).ravel()
+                diff = f_plus - f_minus
+                scale = 2.0
+            else:
+                raise ValueError("scheme must be 'forward' or 'centered'.")
+
+            p[idx] = 0.0
+
+            # main diagonal J_{j,j}
+            d_main[idx] = diff[idx] / (scale * h[idx])
+
+            # lower diagonal J_{j+1,j} stored at index j
+            cols = idx[idx < n - 1]
+            rows = cols + 1
+            d_lower[cols] = diff[rows] / (scale * h[cols])
+
+            # upper diagonal J_{j-1,j} stored at index (j-1)
+            cols = idx[idx > 0]
+            rows = cols - 1
+            d_upper[rows] = diff[rows] / (scale * h[cols])
+
+        return d_lower, d_main, d_upper
+
+    def approximate_jacobian_tridiag(
+        self, x, k_step, step_mode, scheme="centered", x_ref=None, zero_floor=0.0, fmt="csr"
+    ):
+        d_lower, d_main, d_upper = self.approximate_jacobian_tridiag_diagonals(
+            x, k_step, step_mode, scheme, x_ref, zero_floor
+        )
+        return sparse.diags([d_lower, d_main, d_upper], offsets=[-1, 0, 1], shape=(x.size, x.size), format=fmt)
 
 
-    # 3. TRIDIAGONAL HESSIAN
-
-    def finite_differences_H(self, x, gradient_function=None, k_step=5):
+    # gradient of F(x) = 0.5 ||f||^2: grad = J^T f  
+    def approximate_gradient(
+        self,
+        x: np.ndarray,
+        k_step: int,
+        step_mode: str,
+        scheme: str = "centered",
+        x_ref: Optional[np.ndarray] = None,
+        zero_floor: float = 1.0
+    ) -> np.ndarray:
         """
-        Calculates the Hessian assuming a tridiagonal structure using 3 gradient 
-        evaluations.
-        
-        Args:
-            x: evaluation point.
-            gradient_function: (Optional) Function that calculates the gradient. 
-                               If None, uses self.approximate_gradient.
-            k_step: precision step for h.
+        approximates grad F(x) = J(x)^T f(x) in O(n),
+        using only the three diagonals of the tridiagonal jacobian.
         """
-        n = x.shape[0]
-        h = self.calculate_step(x, k=k_step, mode='adaptive')
-        
-        if gradient_function is None:
-            # Default: Centered Approximate Gradient
-            grad_handle = lambda y: self.approximate_gradient(y, k_step=6, scheme='centered')
-        else:
-            grad_handle = gradient_function
+        n = x.size
+        f0 = self.problem.function_k(x).ravel()
 
-        # 1. Base Gradient
-        g0 = grad_handle(x)
-        
-        diag_main = np.zeros(n)
-        diag_upper = np.zeros(n-1)
-        diag_lower = np.zeros(n-1)
-        p = np.zeros(n)
-        
-        for offset in [0, 1, 2]:
-            indices = np.arange(offset, n, 3)
-            if len(indices) == 0: continue
-                
-            p[indices] = h[indices]
-            g_perturbed = grad_handle(x + p)
-            p[indices] = 0.0 # Reset
-            
-            diff_vec = (g_perturbed - g0)
-            
-            # 1. Main Diagonal (i, i)
-            diag_main[indices] = diff_vec[indices] / h[indices]
-            
-            # 2. Upper Diagonal (i, i+1)
-            # Element (i, i+1) of the Hessian matrix.
-            # Obtained by perturbing column i+1 (indices) and reading row i (rows_affected)
-            rows_affected_upper = indices - 1
-            valid_mask_upper = rows_affected_upper >= 0
-            
-            valid_rows = rows_affected_upper[valid_mask_upper] # Rows (i)
-            valid_cols = indices[valid_mask_upper]             # Perturbed Columns (i+1)
-            
-            # In sparse.diags, diagonal '1' (upper), element k corresponds to (k, k+1)
-            # So we use valid_rows as index for the diagonal vector
-            diag_upper[valid_rows] = diff_vec[valid_rows] / h[valid_cols]
-            
-            # 3. Lower Diagonal (i, i-1)
-            rows_affected_lower = indices + 1
-            valid_mask_lower = rows_affected_lower < n
-            
-            valid_rows = rows_affected_lower[valid_mask_lower]
-            valid_cols = indices[valid_mask_lower]
-            
-            # In sparse.diags, diagonal '-1' (lower), element k corresponds to (k+1, k)
-            # So we use valid_cols as index for the diagonal vector
-            diag_lower[valid_cols] = diff_vec[valid_rows] / h[valid_cols]
+        d_lower, d_main, d_upper = self.approximate_jacobian_tridiag_diagonals(
+            x, k_step=k_step, step_mode=step_mode, scheme=scheme, x_ref=x_ref, zero_floor=zero_floor
+        )
 
-        H_approx = sparse.diags([diag_lower, diag_main, diag_upper], [-1, 0, 1], shape=(n, n), format='csc')
-        
-        # Symmetrization for numerical stability
-        H_sym = (H_approx + H_approx.T) / 2
-        
-        return H_sym
+        g = np.zeros(n, dtype=float)
+
+        # (J^T f)_i = d_main[i]*f[i] + d_upper[i-1]*f[i-1] + d_lower[i]*f[i+1]
+        g += d_main * f0
+        g[1:] += d_upper * f0[:-1]
+        g[:-1] += d_lower[:] * f0[1:]
+
+        return g
+
+    # pentadiagonal hessian
+    def approximate_hessian_pentadiag(
+        self,
+        x: np.ndarray,
+        grad_fun: Callable[[np.ndarray], np.ndarray],
+        k_step: int,
+        step_mode: str,
+        x_ref: Optional[np.ndarray] = None,
+        zero_floor: float = 1.0
+    ):
+        """
+        approximates a pentadiagonal hessian by forward differences of the gradient:
+
+            H_{i,j} ≈ (g_i(x + h_j e_j) - g_i(x)) / h_j
+
+        since the target hessian is assumed to have bandwidth 2.
+
+        returns a symmetric csr_matrix.
+        """
+        n = x.size
+        h = self.step_vector(x, k=k_step, mode=step_mode, x_ref=x_ref, zero_floor=zero_floor)
+
+        g0 = grad_fun(x).ravel()
+
+        diag0 = np.zeros(n, dtype=float)
+        diag_p1 = np.zeros(n - 1, dtype=float)  # offset +1
+        diag_p2 = np.zeros(n - 2, dtype=float)  # offset +2
+        diag_m1 = np.zeros(n - 1, dtype=float)  # offset -1
+        diag_m2 = np.zeros(n - 2, dtype=float)  # offset -2
+
+        p = np.zeros(n, dtype=float)
+
+        for offset in range(5):
+            idx = np.arange(offset, n, 5)
+            if idx.size == 0:
+                continue
+
+            p[idx] = h[idx]
+            g1 = grad_fun(x + p).ravel()
+            p[idx] = 0.0
+
+            diff = g1 - g0
+
+            # main diagonal H_{j,j}
+            diag0[idx] = diff[idx] / h[idx]
+
+            # upper diagonals: H_{j-1,j} -> offset +1 at position (j-1)
+            j = idx[idx >= 1]
+            if j.size > 0:
+                diag_p1[j - 1] = diff[j - 1] / h[j]
+
+            # H_{j-2,j} -> offset +2 at position (j-2)
+            j = idx[idx >= 2]
+            if j.size > 0:
+                diag_p2[j - 2] = diff[j - 2] / h[j]
+
+            # lower diagonals: H_{j+1,j} -> offset -1 at position j
+            j = idx[idx <= n - 2]
+            if j.size > 0:
+                diag_m1[j] = diff[j + 1] / h[j]
+
+            # H_{j+2,j} -> offset -2 at position j
+            j = idx[idx <= n - 3]
+            if j.size > 0:
+                diag_m2[j] = diff[j + 2] / h[j]
+
+        H = sparse.diags(
+            diagonals=[diag_m2, diag_m1, diag0, diag_p1, diag_p2],
+            offsets=[-2, -1, 0, 1, 2],
+            shape=(n, n),
+            format="csr"
+        )
+
+        # symmetrization is crucial for (modified) newton methods
+        H = (H + H.T) * 0.5
+        return H
+
+    # helper: build a consistent gradient callable for the chosen FD settings
+    def make_grad_fun(
+        self,
+        k_step: int,
+        step_mode: str,
+        scheme: str = "centered",
+        x_ref: Optional[np.ndarray] = None,
+        zero_floor: float = 1.0
+    ):
+        # closure used to pass a gradient function into approximate_hessian_pentadiag
+        return lambda y: self.approximate_gradient(
+            y, k_step=k_step, step_mode=step_mode, scheme=scheme, x_ref=x_ref, zero_floor=zero_floor
+        )
+
+if __name__ == "__main__":
+    #EXAMPLE OF USAGE
+
+    n = 100000
+    k = 8
+
+    problem = Problem31(n)
+    fd = FiniteDifferences(problem)
+
+    # Use the problem's own starting point
+    x = problem.x0.copy()
+
+    # Case A: exact gradient, FD Hessian (H ≈ FD(grad_exact))
+    g_exact = problem.gradient(x)
+    H_fd_from_exact_grad = fd.approximate_hessian_pentadiag(
+        x,
+        grad_fun=problem.gradient,
+        k_step=k,
+        step_mode="scalar",   # "scalar" or "adaptive"
+        x_ref=x,
+        zero_floor=1e-2
+    )
+
+    # Case B: all derivatives approximated (grad ≈ J_fd^T f, H ≈ FD(grad_fd))
+    grad_fd = fd.make_grad_fun(
+        k_step=k,
+        step_mode="adaptive",
+        scheme="centered",
+        x_ref=x,
+        zero_floor=1e-2
+    )
+
+    g_fd = grad_fd(x)
+    H_fd_from_fd_grad = fd.approximate_hessian_pentadiag(
+        x,
+        grad_fun=grad_fd,
+        k_step=k,
+        step_mode="adaptive",
+        x_ref=x,
+        zero_floor=1e-2
+    )
+
+    print("n =", n, "k =", k)
+    print("||g_exact|| =", np.linalg.norm(g_exact))
+    print("||g_fd||    =", np.linalg.norm(g_fd))
+    print("H_fd_from_exact_grad: shape =", H_fd_from_exact_grad.shape, "\nnumber of non-zero elements =", H_fd_from_exact_grad.nnz)
+    print("H_fd_from_fd_grad:    shape =", H_fd_from_fd_grad.shape, "\nnumber of non-zero elements =", H_fd_from_fd_grad.nnz)
