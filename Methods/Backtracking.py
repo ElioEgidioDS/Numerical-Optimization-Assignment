@@ -17,13 +17,15 @@ class Backtracking:
             return 1e-4
 
         for k in range(1,self.max_k):
-            f_next_step = function(x_curr + alpha*p_desc)
-            armijo_condition = f_curr + alpha*self.C1*slope
-            
-            if f_next_step <= armijo_condition:
-                return alpha
-            else:
-                alpha = self.rho*alpha
+            try:
+                f_next_step = function(x_curr + alpha*p_desc)
+                armijo_condition = f_curr + alpha*self.C1*slope
+                
+                if f_next_step <= armijo_condition:
+                    return alpha
+            except (OverflowError, ValueError, RuntimeWarning):
+                pass
+            alpha *= self.rho
             
         
         print(f"no alpha was found in {k} steps" )

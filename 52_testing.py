@@ -3,70 +3,87 @@ import time
 from Problems.Problem_52 import Problem_52
 from Methods.NewtonMethod import NewtonMethod
 from Methods.TruncatedNewtonMethod import TruncatedNewtonMethod
+from Methods.Finite_Differences import FiniteDifferences
+
+class ProblemWrapper:
+    """
+    Wraps the Problem_52 instance to switch between Analytical and FD derivatives.
+    """
+    def __init__(self, prob, fd_handler, mode='analytical'):
+        self.prob = prob
+        self.fd = fd_handler
+        self.mode = mode  # 'analytical', 'mixed_fd', 'full_fd'
+        self.n = prob.n
+        self.x0 = prob.x0
+
+    def function(self, x):
+        return self.prob.function(x)
+
+    def gradient(self, x):
+        if self.mode == 'full_fd':
+            # Uses the FD Gradient (J^T * f)
+            return self.fd.approximate_gradient(x, k_step=8, step_mode='adaptive', scheme='centered')
+        return self.prob.gradient(x)
+
+    def hessian(self, x):
+        if self.mode == 'analytical':
+            return self.prob.hessian(x)
+        
+        # Decide which gradient function to differentiate for the FD Hessian
+        if self.mode == 'mixed_fd':
+            # Differentiate the exact gradient
+            g_fun = self.prob.gradient
+        else:
+            # Differentiate the FD gradient
+            g_fun = lambda y: self.fd.approximate_gradient(y, k_step=8, step_mode='adaptive')
+            
+        return self.fd.approximate_hessian_pentadiag(x, grad_fun=g_fun, k_step=6, step_mode='adaptive')
 
 def main():
-    # 1. Configurazione Parametri
-    n = 10000          # Dimensione del problema
-    tol = 1e-6       # Tolleranza (meno stringente per via della natura oscillatoria)
-    max_iter = 1000    # Massimo numero di iterazioni esterne
+    n = 10000  
+    tol = 1e-6
+    max_iter = 500
     
-    # Inizializzazione Problema 52
-    problem = Problem_52(n)
+    # Initialization
+    problem_base = Problem_52(n)
+    fd_handler = FiniteDifferences(problem_base)
     
-    # --- NUOVO PUNTO DI PARTENZA RANDOM ---
-    # Usiamo un seed per rendere il test confrontabile in futuro
-    # Generiamo valori tra -0.5 e 0.5 per evitare stalli immediati in zone troppo piatte
-    x0 = np.random.uniform(-0.5, 0.5, n) 
-    # --------------------------------------
-    #x0 = problem.x0
-    print(f"--- Testing Problem 52 (Trigexp 1) with n = {n} (RANDOM START) ---")
-    print(f"Target Tolerance: {tol}")
-    print("-" * 40)
+    # INITIALIZE METHODS WITH CORRECT ARGUMENTS
+    # NewtonMethod(tol, max_n, bck_trk_rho, bck_trk_C1)
+    nm = NewtonMethod(tol, max_iter, 0.5, 1e-4)
+    
+    # TruncatedNewtonMethod(tol, kmax, jmax, order_conv, rho, c1)
+    tn = TruncatedNewtonMethod(tol, max_iter, 200, 'sl', 0.5, 1e-4)
 
-    # 2. Test Newton Method (Esatto con Cholesky Banded)
-    print("\n[Running Newton Method (Exact Banded)...]")
-    # Parametri: tol, max_n, bck_trk_C1, bck_trk_phi
-    nm = NewtonMethod(tol, max_iter, 1e-4, 0.5)
+    modes = ['analytical', 'mixed_fd', 'full_fd']
     
-    start_nm = time.time()
-    # Il metodo 'exact' sfrutta la struttura pentadiagonale dell'Hessiana
-    x_nm, path_nm, grad_norm_nm, conv_nm, k_nm = nm.minimize(problem, x0, mode="exact")
-    end_nm = time.time() - start_nm
-    
-    if conv_nm:
-        print(f"CONVERGED in {k_nm} iterations")
-        print(f"Time: {end_nm:.4f} s")
-        print(f"Final Gradient Norm: {grad_norm_nm:.2e}")
-        print(f"Final Function Value: {problem.function(x_nm):.2e}")
-    else:
-        print("Newton Method failed to converge.")
+    print(f"--- Benchmark: Problem 52 | n={n} | x0=zeros ---")
+    header = f"{'Method':<18} | {'Derivs':<12} | {'Status':<8} | {'Iter':<5} | {'Time (s)':<8} | {'Final F(x)':<10}"
+    print(header)
+    print("-" * len(header))
 
-    # 3. Test Truncated Newton Method (Iterativo con CG)
-    print("\n" + "-" * 40)
-    print("[Running Truncated Newton Method (CG)...]")
-    # Parametri: tol, kmax (outer), jmax (inner), order_conv
-    # jmax=200 per gestire meglio le oscillazioni trigonometriche
-    tn = TruncatedNewtonMethod(tol, max_iter, 200, 'sl')
-    
-    start_tn = time.time()
-    x_tn, path_tn, grad_norm_tn, conv_tn, k_tn = tn.truncated_newton(
-        problem.function, problem.gradient, problem.hessian, x0)
-    end_tn = time.time() - start_tn
-    
-    if conv_tn:
-        print(f"CONVERGED in {k_tn} iterations")
-        print(f"Time: {end_tn:.4f} s")
-        print(f"Final Gradient Norm: {grad_norm_tn:.2e}")
-        print(f"Final Function Value: {problem.function(x_tn):.2e}")
-    else:
-        print("Truncated Newton Method failed to converge.")
+    for mode in modes:
+        proxy = ProblemWrapper(problem_base, fd_handler, mode=mode)
+        
+        # 1. Newton Method (Modified / Banded)
+        start = time.time()
+        # Note: NewtonMethod uses 'minimize(problem, x0)'
+        x_nm, _, g_norm_nm, conv_nm, iters_nm = nm.minimize(proxy, proxy.x0)
+        t_nm = time.time() - start
+        s_nm = "CONV" if conv_nm else "FAIL"
+        f_nm = proxy.function(x_nm)
+        print(f"{'Mod-Newton':<18} | {mode:<12} | {s_nm:<8} | {iters_nm:<5} | {t_nm:<8.4f} | {f_nm:<10.2e}")
 
-    # 4. Confronto finale
-    print("\n" + "=" * 40)
-    if conv_nm and conv_tn:
-        diff = np.linalg.norm(x_nm - x_tn)
-        print(f"Difference between NM and TN solutions (L2-norm): {diff:.2e}")
-        print(f"Performance Ratio: TN is {end_nm/end_tn:.2f}x faster/slower than NM")
+        # 2. Truncated Newton Method (CG)
+        start = time.time()
+        # Note: TruncatedNewton uses 'truncated_newton(f, gradf, hessf, x0)'
+        x_tn, g_norm_tn, conv_tn, iters_tn, _ = tn.truncated_newton(
+            proxy.function, proxy.gradient, proxy.hessian, proxy.x0)
+        t_tn = time.time() - start
+        s_tn = "CONV" if conv_tn else "FAIL"
+        f_tn = proxy.function(x_tn)
+        print(f"{'Trunc-Newton':<18} | {mode:<12} | {s_tn:<8} | {iters_tn:<5} | {t_tn:<8.4f} | {f_tn:<10.2e}")
+        print("-" * len(header))
 
 if __name__ == "__main__":
     main()

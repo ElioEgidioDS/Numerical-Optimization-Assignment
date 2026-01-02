@@ -1,0 +1,7 @@
+,n,mode,k,norm_gradient,time,final_score,iterations,converges,pathd
+0,100000,scalar,4,,,,,True,[]
+1,100000,scalar,8,,,,,True,[]
+2,100000,scalar,12,,,,,True,[]
+3,100000,adaptive,4,,,,,True,[]
+4,100000,adaptive,8,,,,,True,[]
+5,100000,adaptive,12,,,,,True,[]

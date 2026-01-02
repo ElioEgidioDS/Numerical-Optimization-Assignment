@@ -4,6 +4,7 @@ from scipy.sparse import diags
 class Problem_31:
     def __init__(self, n):
         self.n = n
+        self.name = "p31"
         # Starting point x_l = -1
         self.x0 = -1 * np.ones(n)
 
