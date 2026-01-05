@@ -14,7 +14,7 @@ class Backtracking:
 
         if slope > 0:
             print("slope was positive")
-            return 1e-4
+            return 0.0
 
         for k in range(1,self.max_k):
             try:

@@ -40,6 +40,7 @@ def main():
     print("FD CONCLUDED")
     #exit()
 
+    print("TOL STARTED")
     x_initial_nm,x_initial_tr, x_random_nm,x_random_tr = iterate_tol(x0,xRand, problem_31)
     x_initial_nm.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_31.name}\x_initial_nm.csv",sep=',')
     x_initial_tr.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_31.name}\x_initial_tr.csv",sep=',')
@@ -47,7 +48,7 @@ def main():
     x_random_tr.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_31.name}\x_random_tr.csv",sep=',')
     
     print("TOL CONCLUDED")
-    #exit()
+    exit()
 
     x_initial_bck_df,x_initial_tr_bck_df, x_random_bck_df,x_random_tr_bck_df = iterate_bcktrk(x0,xRand,problem_31)
     x_initial_bck_df.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_31.name}\x_initial_nm_bck.csv",sep=',')

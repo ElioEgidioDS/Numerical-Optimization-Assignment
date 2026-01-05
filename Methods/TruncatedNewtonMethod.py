@@ -1,6 +1,8 @@
 import numpy as np
 from scipy.sparse.linalg import spilu, spsolve_triangular
 from scipy.sparse import issparse, csr_matrix, csc_matrix
+from Methods.Backtracking import Backtracking
+
 
 
 class TruncatedNewtonMethod:
@@ -147,6 +149,7 @@ class TruncatedNewtonMethod:
         grad_xk_norm = np.linalg.norm(grad_xk)
         k = 0
         flag_convergence = False
+        bcktrk = Backtracking(self.c1,self.rho,100)
 
         for k in range(self.kmax): 
             
@@ -166,7 +169,8 @@ class TruncatedNewtonMethod:
             if np.dot(p_tn, grad_xk) >= 0:
                 p_tn = c
 
-            alpha = self.line_search(f, grad_xk, xk, p_tn, alpha=1, rho=self.rho, c1=self.c1)
+            #alpha = self.line_search(f, grad_xk, xk, p_tn, alpha=1, rho=self.rho, c1=self.c1)
+            alpha = bcktrk.backtrack(p_tn,xk,f,1,grad_xk)
             
             xk = xk + alpha * p_tn   
             xk_sequence.append(xk.copy())
