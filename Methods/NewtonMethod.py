@@ -64,6 +64,7 @@ class NewtonMethod:
         B = 1e-3
         I = eye(x0.shape[0], format="csr")
         converge = False
+        bcktrk = Backtracking(self.bck_trk_c1,self.bck_trk_rho,100)
             
         for i in range(self.max_n):
             gradient = problem.gradient(x)
@@ -93,7 +94,8 @@ class NewtonMethod:
 
             
             p_mn = cho_solve_banded((R,True), -gradient)
-            alpha = self.line_search(problem.function, gradient, x, p_mn, alpha=1, rho=self.bck_trk_rho, c1=self.bck_trk_c1)
+            #alpha = self.line_search(problem.function, gradient, x, p_mn, alpha=1, rho=self.bck_trk_rho, c1=self.bck_trk_c1)
+            alpha = bcktrk.backtrack(p_mn,x,problem.function,1,gradient)
             
             #print(f"{k}:{np.linalg.norm(gradient)}")
             x = x + alpha * p_mn

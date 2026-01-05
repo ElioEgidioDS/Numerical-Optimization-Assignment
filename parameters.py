@@ -181,8 +181,8 @@ def iterate_tol(x0, xRand, problem_main):
 
         print(f"\n=== Running experiments with tol = {tol:.1e} ===")
 
-        modified_newt = NewtonMethod(tol, 1000, 1e-4, 0.5)
-        truncated_newt = TruncatedNewtonMethod(tol, 1000, 1000, 'sl', 1e-4, 0.5)
+        modified_newt = NewtonMethod(tol, 1000, 0.5, 1e-4)
+        truncated_newt = TruncatedNewtonMethod(tol, 1000, 1000, 'sl')
 
         x_initial_results = {}
         x_initial_results_tr = {}
