@@ -1,7 +1,7 @@
 import numpy as np
 import time
 from Problems.Problem_52 import Problem_52
-from Methods.NewtonMethod import NewtonMethod
+from Methods.ModifiedNewtonMethod import NewtonMethod
 from Methods.TruncatedNewtonMethod import TruncatedNewtonMethod
 from Methods.Finite_Differences import FiniteDifferences
 

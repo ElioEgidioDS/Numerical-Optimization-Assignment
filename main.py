@@ -1,7 +1,7 @@
 import time
 import numpy as np
 import pandas as pd
-from Methods.NewtonMethod import NewtonMethod
+from Methods.ModifiedNewtonMethod import NewtonMethod
 from Problems.Problem_64 import Problem_64
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider

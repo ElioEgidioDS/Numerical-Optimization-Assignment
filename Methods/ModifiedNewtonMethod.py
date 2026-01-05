@@ -6,7 +6,7 @@ from scipy.linalg import cholesky_banded, cho_solve_banded, LinAlgError
 
 
 
-class NewtonMethod:
+class ModifiedNewtonMethod:
     def __init__(self, tol, max_n, bck_trk_rho, bck_trk_C1):
         self.tol = tol
         self.max_n = max_n
@@ -58,7 +58,7 @@ class NewtonMethod:
         return banded_format
 
 
-    def minimize(self, problem,x0):
+    def modified_newton(self, problem, x0):
         x = x0.copy()
         path = [x.copy()]
         B = 1e-3
