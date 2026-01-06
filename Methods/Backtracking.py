@@ -29,3 +29,4 @@ class Backtracking:
             
         
         print(f"no alpha was found in {k} steps" )
+        return 0.0

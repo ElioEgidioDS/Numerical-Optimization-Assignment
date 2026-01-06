@@ -171,7 +171,8 @@ class TruncatedNewtonMethod:
 
             #alpha = self.line_search(f, grad_xk, xk, p_tn, alpha=1, rho=self.rho, c1=self.c1)
             alpha = bcktrk.backtrack(p_tn,xk,f,1,grad_xk)
-            
+            if alpha == 0:
+                break 
             xk = xk + alpha * p_tn   
             xk_sequence.append(xk.copy())
 

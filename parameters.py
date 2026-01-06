@@ -33,7 +33,7 @@ def iterate_fd(x0, xRand,problem_main):
             for k in k_values:
 
                 grad = lambda x: fd_solver.approximate_gradient(x, k, mode=mode)
-                hess = lambda x: fd_solver.finite_differences_H(x, grad, k)
+                hess = lambda x: fd_solver.approximate_hessian_pentadiag(x, grad, k)
 
                 problem_fd = Problem_fd(problem, grad, hess)
 
@@ -44,11 +44,11 @@ def iterate_fd(x0, xRand,problem_main):
                 end_time = time.time() - start_time
 
                 #TR
-                '''start_time_tr = time.time()
+                start_time_tr = time.time()
                 x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = truncated_newt.truncated_newton(problem_fd.function, problem_fd.gradient, problem_fd.hessian, starting_point)
                 end_time_tr = time.time() - start_time_tr
 
-                final_score_tr = problem.function(x_tr)'''
+                final_score_tr = problem.function(x_tr)
                 final_score = problem.function(x)
 
                 x_initial_fd.append({
@@ -64,7 +64,7 @@ def iterate_fd(x0, xRand,problem_main):
                     "path": path,
                 })
 
-                '''x_initial_fd_tr.append({
+                x_initial_fd_tr.append({
                     #"strategy": strategy, 
                     "n":starting_point.shape[0],
                     "mode": mode,         
@@ -75,7 +75,7 @@ def iterate_fd(x0, xRand,problem_main):
                     "converges": converges_tr,
                     "iterations": steps_tr,
                     "path": path_tr,
-                })'''
+                })
 
 
     n_dim = xRand[3].shape[1]
@@ -105,7 +105,7 @@ def iterate_fd(x0, xRand,problem_main):
             for starting_point in xRand[3]:
                 
                 grad = lambda x: fd_solver.approximate_gradient(x, k_step=k, mode=mode)
-                hess = lambda x: fd_solver.finite_differences_H(x, grad, k_step=k)
+                hess = lambda x: fd_solver.approximate_hessian_pentadiag(x, grad, k_step=k)
                 problem_fd = Problem_fd(problem, grad, hess)
 
                 # NM
@@ -163,7 +163,7 @@ def iterate_fd(x0, xRand,problem_main):
                 "final_score": np.mean(final_scores_tr),
                 "iterations": np.mean(iterations_tr),
                 "converges": np.all(converges_list_tr),
-                "pathd" : path_history_tr
+                "paths" : path_history_tr
             })
 
     x_initial_fd_df = pd.DataFrame(x_initial_fd)
@@ -380,7 +380,7 @@ def iterate_tol(x0, xRand, problem_main):
     for tol, res in all_results.items():
         #if res["x_initial_tr"]:
             for n_dim, metrics in res["x_initial_tr"].items():
-                table_tr_rand.append({
+                table_tr_initial.append({
                     "method": "Truncated Newton Initial Points",
                     "tol": tol,
                     "n": n_dim,
@@ -451,11 +451,11 @@ def iterate_bcktrk(x0,xRand, problem_main):
                 end_time = time.time() - start_time
 
                 #TR
-                '''start_time_tr = time.time()
-                x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = truncated_newt.truncated_newton(problem_fd.function, problem_fd.gradient, problem_fd.hessian, starting_point)
+                start_time_tr = time.time()
+                x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = truncated_newt.truncated_newton(problem.function, problem.gradient, problem.hessian, starting_point)
                 end_time_tr = time.time() - start_time_tr
 
-                final_score_tr = problem.function(x_tr)'''
+                final_score_tr = problem.function(x_tr)
                 final_score = problem.function(x)
 
                 x_initial_bck.append({
@@ -468,10 +468,10 @@ def iterate_bcktrk(x0,xRand, problem_main):
                     "final_score": final_score,
                     "converges": converges,
                     "iterations": steps,
-                    "path": path,
+                    #"path": path,
                 })
 
-                '''x_initial_tr_bck.append({
+                x_initial_tr_bck.append({
                     #"strategy": strategy, 
                     "n":starting_point.shape[0],
                     "C1": c1,         
@@ -481,8 +481,8 @@ def iterate_bcktrk(x0,xRand, problem_main):
                     "final_score": final_score_tr,
                     "converges": converges_tr,
                     "iterations": steps_tr,
-                    "path": path_tr,
-                })'''
+                    #"path": path_tr,
+                })
 
 
     n_dim = xRand[3].shape[1]
@@ -491,6 +491,8 @@ def iterate_bcktrk(x0,xRand, problem_main):
     x_random_tr_bck = []
     for rho in bck_trk_rho:
         for c1 in bck_trk_C1:
+            modified_newt = NewtonMethod(1e-6, 1000, rho, c1)
+            truncated_newt = TruncatedNewtonMethod(1e-6, 1000, 500, 'sl', rho, c1)
             # NM
             path_history = []
             norm_grads = []
@@ -527,8 +529,8 @@ def iterate_bcktrk(x0,xRand, problem_main):
                 converges_list.append(converges)
 
                 # TR
-                '''start_time_tr = time.time()
-                x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = TR.truncated_newton(
+                start_time_tr = time.time()
+                x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = truncated_newt.truncated_newton(
                     problem.function, problem.gradient, problem.hessian, starting_point
                 )
                 end_time_tr = time.time() - start_time_tr
@@ -539,7 +541,7 @@ def iterate_bcktrk(x0,xRand, problem_main):
                 final_scores_tr.append(final_score_tr)
                 iterations_tr.append(steps_tr)
                 converges_list_tr.append(converges_tr)
-                path_history_tr.append(path_tr)'''
+                path_history_tr.append(path_tr)
 
         
             print(f"Rho= {rho} c1={c1}, Avg Iter: {np.mean(iterations)}")
@@ -554,7 +556,7 @@ def iterate_bcktrk(x0,xRand, problem_main):
                 "final_score": np.mean(final_scores),
                 "iterations": np.mean(iterations),
                 "converges": np.all(converges_list),
-                "paths": path_history,   
+                #"paths": path_history,   
             })
                         
             x_random_tr_bck.append({
@@ -566,7 +568,7 @@ def iterate_bcktrk(x0,xRand, problem_main):
                 "final_score": np.mean(final_scores_tr),
                 "iterations": np.mean(iterations_tr),
                 "converges": np.all(converges_list_tr),
-                "pathd" : path_history_tr
+                #"paths" : path_history_tr
             })
     x_initial_bck_df = pd.DataFrame(x_initial_bck)
     x_initial_tr_bck_df = pd.DataFrame(x_initial_tr_bck)

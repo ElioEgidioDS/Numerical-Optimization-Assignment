@@ -22,9 +22,9 @@ def main():
 
 
     problem_31 = Problem_31(n[0])
-    #x_initial_fd_df,x_initial_fd_tr_df, x_random_fd_df,x_random_fd_tr_df = iterate_fd(x0,xRand, problem_31)
+    r'''x_initial_fd_df,x_initial_fd_tr_df, x_random_fd_df,x_random_fd_tr_df = iterate_fd(x0,xRand, problem_31)
 
-    r'''x_initial_fd_df.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_31.name}\initial_results_nm_fd.csv",sep=',')
+    x_initial_fd_df.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_31.name}\initial_results_nm_fd.csv",sep=',')
     x_initial_fd_tr_df.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_31.name}\initial_results_tr_fd.csv",sep=',')
     x_random_fd_df.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_31.name}\random_results_nm_fd.csv",sep=',')
     x_random_fd_tr_df.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_31.name}\random_results_tr_fd.csv",sep=',')
@@ -35,7 +35,7 @@ def main():
     print()
     print(x_random_fd_df)
     print()
-    print(x_random_fd_tr_df)'''
+    print(x_random_fd_tr_df)
 
     print("FD CONCLUDED")
     #exit()
@@ -48,8 +48,9 @@ def main():
     x_random_tr.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_31.name}\x_random_tr.csv",sep=',')
     
     print("TOL CONCLUDED")
-    exit()
+    #exit()'''
 
+    print("BCK STARTED")
     x_initial_bck_df,x_initial_tr_bck_df, x_random_bck_df,x_random_tr_bck_df = iterate_bcktrk(x0,xRand,problem_31)
     x_initial_bck_df.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_31.name}\x_initial_nm_bck.csv",sep=',')
     x_initial_tr_bck_df.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_31.name}\x_initial_tr_bck.csv",sep=',')
@@ -57,7 +58,7 @@ def main():
     x_random_tr_bck_df.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_31.name}\x_random_tr_bck.csv",sep=',')
     
     print("BCK concluded")
-    #exit()
+    exit()
 
 
 
