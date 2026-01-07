@@ -17,7 +17,7 @@ def iterate_fd(x0, xRand,problem_main):
     k_values = [4, 8, 12]
     modes = ["scalar","adaptive"]
 
-    modified_newt = NewtonMethod(1e-6, 1000, 1e-4, 0.5)
+    modified_newt = NewtonMethod(1e-6, 1000, 0.5, 1e-4)
     truncated_newt = TruncatedNewtonMethod(1e-6, 1000, 500, 'sl')
     x_initial_fd = []
     x_initial_fd_tr = []
@@ -32,8 +32,8 @@ def iterate_fd(x0, xRand,problem_main):
         for mode in modes:
             for k in k_values:
 
-                grad = lambda x: fd_solver.approximate_gradient(x, k, mode=mode)
-                hess = lambda x: fd_solver.approximate_hessian_pentadiag(x, grad, k)
+                grad = lambda x: fd_solver.approximate_gradient(x, k, step_mode=mode, x_ref=x,zero_floor=1e-2)
+                hess = lambda x: fd_solver.approximate_hessian_pentadiag(x, grad, k, step_mode=mode, x_ref=x,zero_floor=1e-2)
 
                 problem_fd = Problem_fd(problem, grad, hess)
 
@@ -61,7 +61,7 @@ def iterate_fd(x0, xRand,problem_main):
                     "final_score": final_score,
                     "converges": converges,
                     "iterations": steps,
-                    "path": path,
+                    #"path": path,
                 })
 
                 x_initial_fd_tr.append({
@@ -74,7 +74,7 @@ def iterate_fd(x0, xRand,problem_main):
                     "final_score": final_score_tr,
                     "converges": converges_tr,
                     "iterations": steps_tr,
-                    "path": path_tr,
+                    #"path": path_tr,
                 })
 
 
@@ -151,7 +151,7 @@ def iterate_fd(x0, xRand,problem_main):
                 "final_score": np.mean(final_scores),
                 "iterations": np.mean(iterations),
                 "converges": np.all(converges_list),
-                "paths": path_history,   
+                #"paths": path_history,   
             })
                         
             x_random_fd_tr.append({
@@ -163,7 +163,7 @@ def iterate_fd(x0, xRand,problem_main):
                 "final_score": np.mean(final_scores_tr),
                 "iterations": np.mean(iterations_tr),
                 "converges": np.all(converges_list_tr),
-                "paths" : path_history_tr
+                #"paths" : path_history_tr
             })
 
     x_initial_fd_df = pd.DataFrame(x_initial_fd)
@@ -427,7 +427,7 @@ def iterate_tol(x0, xRand, problem_main):
     return df_nm_init,df_tr_init,df_nm_rand,df_tr_rand
 
 def iterate_bcktrk(x0,xRand, problem_main):
-    bck_trk_C1 = [0.2, 0.4, 0.6, 0.8]
+    bck_trk_C1 = [1e-4, 1e-3, 1e-2, 0.1]
     bck_trk_rho = [0.2, 0.4, 0.6, 0.8]
     x_initial_bck = []
     x_initial_tr_bck = []
