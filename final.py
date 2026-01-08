@@ -40,7 +40,11 @@ def final_1(x0, xRand, problem_main):
 
         #TR
         start_time_tr = time.time()
-        x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = truncated_newt.truncated_newton(problem.function, problem.gradient, problem.hessian, starting_point)
+        x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr, flag_tr = truncated_newt.truncated_newton(
+            problem.function, problem.gradient, problem.hessian, starting_point,
+            return_flag=True
+        )
+
         end_time_tr = time.time() - start_time_tr
 
         final_score_tr = problem.function(x_tr)
@@ -76,7 +80,8 @@ def final_1(x0, xRand, problem_main):
             "final_score": final_score_tr,
             "converges": converges_tr,
             "iterations": steps_tr,
-            "path": path_to_save_tr,
+            "flag": flag_tr,
+            "path": path_to_save_tr
         }
 
     # random initialization (5 runs per size)
@@ -99,6 +104,7 @@ def final_1(x0, xRand, problem_main):
         final_scores_tr = []
         iterations_tr = []
         converges_list_tr = []
+        flags_tr = []
         path_history_tr = []
 
         for starting_point in starting_size:
@@ -126,10 +132,12 @@ def final_1(x0, xRand, problem_main):
             iterations.append(steps)
             converges_list.append(converges)
 
-            
-
             start_time_tr = time.time()
-            x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = truncated_newt.truncated_newton(problem.function, problem.gradient, problem.hessian, starting_point)
+            x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr, flag_tr = truncated_newt.truncated_newton(
+                problem.function, problem.gradient, problem.hessian, starting_point,
+                return_flag=True
+            )
+
             end_time_tr = time.time() - start_time_tr
 
             final_score_tr = problem.function(x_tr)
@@ -147,6 +155,7 @@ def final_1(x0, xRand, problem_main):
             final_scores_tr.append(final_score_tr)
             iterations_tr.append(steps_tr)
             converges_list_tr.append(converges_tr)
+            flags_tr.append(flag_tr)
             path_history_tr.append(path_to_save_tr)
 
 
@@ -169,6 +178,7 @@ def final_1(x0, xRand, problem_main):
             "final_score": np.mean(final_scores_tr),
             "iterations": np.mean(iterations_tr),
             "converges": np.all(converges_list_tr),
+            "flags": flags_tr,
             "paths" : path_history_tr
         }
 
@@ -218,9 +228,12 @@ def final_1(x0, xRand, problem_main):
                     "converges": metrics["converges"],
                     "final_score": metrics["final_score"],
                     "norm_gradient": metrics["norm_gradient"],
+                    "flag": metrics.get("flag", ""),
                     "path" : metrics["path"]
                 })
     df_tr_init = pd.DataFrame(table_tr_initial)
+    if "flag" not in df_tr_init.columns:
+        print("WARNING: missing 'flag' in df_tr_init columns:", df_tr_init.columns)
 
 
 
@@ -252,9 +265,12 @@ def final_1(x0, xRand, problem_main):
                     "converges": metrics["converges"],
                     "final_score": metrics["final_score"],
                     "norm_gradient": metrics["norm_gradient"],
+                    "flags": metrics.get("flags", []),
                     "paths" : metrics["paths"]
                 })
     df_tr_rand = pd.DataFrame(table_tr_rand)
+    if "flag" not in df_tr_rand.columns:
+        print("WARNING: missing 'flag' in df_tr_rand columns:", df_tr_rand.columns)
     
     return df_nm_init,df_tr_init,df_nm_rand,df_tr_rand
 
@@ -287,7 +303,11 @@ def final_2(x0, xRand, problem_main):
 
             #TR
             start_time_tr = time.time()
-            x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = truncated_newt.truncated_newton(problem_fd.function, problem_fd.gradient, problem_fd.hessian, starting_point)
+            x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr, flag_tr = truncated_newt.truncated_newton(
+                problem_fd.function, problem_fd.gradient, problem_fd.hessian, starting_point,
+                return_flag=True
+            )
+
             end_time_tr = time.time() - start_time_tr
 
             final_score_tr = problem.function(x_tr)
@@ -327,6 +347,7 @@ def final_2(x0, xRand, problem_main):
                 "final_score": final_score_tr,
                 "converges": converges_tr,
                 "iterations": steps_tr,
+                "flag": flag_tr,
                 "path": path_to_save_tr,
             })
 
@@ -463,7 +484,11 @@ def final_3(x0, xRand, problem_main):
 
             #TR
             start_time_tr = time.time()
-            x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = truncated_newt.truncated_newton(problem_fd.function, problem_fd.gradient, problem_fd.hessian, starting_point)
+            x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr, flag_tr = truncated_newt.truncated_newton(
+                problem_fd.function, problem_fd.gradient, problem_fd.hessian, starting_point,
+                return_flag=True
+            )
+
             end_time_tr = time.time() - start_time_tr
 
             final_score_tr = problem.function(x_tr)
@@ -503,6 +528,7 @@ def final_3(x0, xRand, problem_main):
                 "final_score": final_score_tr,
                 "converges": converges_tr,
                 "iterations": steps_tr,
+                "flag": flag_tr,
                 "path": path_to_save_tr,
             })
 
