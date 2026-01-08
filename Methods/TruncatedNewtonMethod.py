@@ -78,67 +78,62 @@ class TruncatedNewtonMethod:
         # z = p
     def inner_CG(self, B, c, z0, etak):
 
-        if not issparse(B):
-            B = csr_matrix(B)
-
-    # Incomplete LU factorization B ~ L * U 
-        try: 
-            ilu_fact = spilu(B, fill_factor=10, drop_tol=1e-4)
-            L = ilu_fact.L
-            U = ilu_fact.U
-        except (RuntimeError, ValueError):
-            return c.copy()
+        # 1. Initialization
+        # Start with p = 0 (so xk = 0 in local space)
+        p_sol = np.zeros_like(c) 
         
-        # B'y = c'    
-        # c' = L^{-1} * c by solving L^T c = c'
-        c_prime = spsolve_triangular(L, c, lower=True)
+        # r = c - B*p_sol = c
+        r = c.copy()
         
-        y = np.zeros_like(z0)
-
-        # initializations
-        rk = c_prime.copy()
-        dk = rk.copy()
+        # d is the search direction
+        d = r.copy()
         
-        norm_c_prime = np.linalg.norm(c_prime)
-        if norm_c_prime < 1e-16: 
-            #it would be considered as zero and the division would fail
-            return np.zeros_like(z0)
-        
-        relres = np.linalg.norm(rk) / norm_c_prime
-        j = 0
+        # Residual norm for stopping condition
+        norm_c = np.linalg.norm(c)
+        if norm_c < 1e-16: 
+            return p_sol
 
-
-        while (j < self.jmax and relres > etak): 
+        # 2. CG Loop
+        for j in range(self.jmax):
             
-            # B @ dk   ==>   B_prime @ dk 
-            Bd_cond = self.mat_vec_precond(B, dk, L, U)
-
-            # dk.T @ B @ dk    ==>   dk @ B_prime @ dk (not explicitely)   
-            dBd_cond = np.dot(dk.T, Bd_cond)
+            # --- Matrix-Vector Product ---
+            # This is the only expensive step
+            Bd = B @ d
             
-            # check if postitive definite
-            # theoretically dBd > 0, but bc of machine precision we use a tolerance
-            if (dBd_cond > 1e-12):      
-                        
-                alpha = np.dot(rk.T, rk) / dBd_cond
-                y = y + alpha * dk
-                r_next = rk - alpha * Bd_cond
-                beta = np.dot(r_next.T, r_next)/np.dot(rk.T, rk)
-                dk = r_next + beta * dk
-                rk = r_next
-                
-                relres = np.linalg.norm(rk) / norm_c_prime
-                j += 1
-
-            else: # not positive definite
-                
-                if j == 0: # if it stopped at the first iteration
-                    return spsolve_triangular(U, dk, lower=False)
-                
-                else: # if it stopped ater the first iteration
-                    return spsolve_triangular(U, y, lower=False)
-                    
-        return spsolve_triangular(U, y, lower=False)
+            # --- Curvature Check (d^T B d) ---
+            dBd = np.dot(d, Bd)
+            
+            # CRITICAL: Truncated Newton Logic
+            # If we encounter negative curvature (indefinite Hessian),
+            # we must stop and return the best direction found so far.
+            if dBd <= 1e-12:
+                if j == 0:
+                    # If it happens at the very first step, 
+                    # the Hessian is bad immediately. Return steepest descent (c).
+                    return c
+                else:
+                    # Otherwise, return the accumulated solution
+                    return p_sol
+            
+            # --- Standard CG Steps ---
+            alpha = np.dot(r, r) / dBd
+            
+            p_next = p_sol + alpha * d
+            r_next = r - alpha * Bd
+            
+            # Check convergence (Relative Residual)
+            if np.linalg.norm(r_next) / norm_c < etak:
+                return p_next
+            
+            # Update search direction for next step
+            beta = np.dot(r_next, r_next) / np.dot(r, r)
+            d = r_next + beta * d
+            
+            # Update variables
+            r = r_next
+            p_sol = p_next
+            
+        return p_sol
 
 
     def truncated_newton(self, f, gradf, hessf, x0):
