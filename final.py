@@ -405,123 +405,113 @@ def final_2(x0, xRand, problem_main):
             })
 
 
-    n_dim = xRand[3].shape[1]
-    problem = type(problem_main)(n_dim)
-    fd_solver = FiniteDifferences(problem)
     x_random_fd = []
     x_random_fd_tr = []
     
-    for k in k_values:
-        # NM
-        path_history = []
-        norm_grads = []
-        times = []
-        final_scores = []
-        iterations = []
-        converges_list = []
-        conv_list = []
+    # 1. Loop Dimensions FIRST (e.g. 2, 1000, 10000...)
+    for x_dataset in xRand:
+        n_dim = x_dataset.shape[1]
+        problem = type(problem_main)(n_dim)
+        fd_solver = FiniteDifferences(problem)
 
-        # TR
-        norm_grads_tr = []
-        times_tr = []
-        final_scores_tr = []
-        iterations_tr = []
-        converges_list_tr = []
-        path_history_tr = []
-        conv_list_tr = []
-
-    
-        for starting_point in xRand[3]:
+        # 2. Loop K values (4, 8, 12)
+        for k in k_values:
             
-            grad = problem.gradient
-            hess = lambda x: fd_solver.approximate_hessian_pentadiag(x, grad, k, step_mode="adaptive", x_ref=x,zero_floor=1e-2)
-            problem_fd = Problem_fd(problem, grad, hess)
+            # Reset metrics for this specific (N, k) batch
+            path_history = []
+            norm_grads = []
+            times = []
+            final_scores = []
+            iterations = []
+            converges_list = []
+            conv_list = []
 
-            # NM
-            start_time = time.time()
-            x, path, norm_gradient, converges, steps = modified_newt.minimize(
-                problem_fd, starting_point
-            )
-            end_time = time.time() - start_time
-            final_score = problem.function(x)
-               
-
-            path_history.append(path_to_save)
-            norm_grads.append(norm_gradient)
-            times.append(end_time)
-            final_scores.append(final_score)
-            iterations.append(steps)
-            converges_list.append(converges)
-
-            # TR
-            start_time_tr = time.time()
-            x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = truncated_newt.truncated_newton(
-                problem_fd.function, problem_fd.gradient, problem_fd.hessian, starting_point
-            )
-            end_time_tr = time.time() - start_time_tr
-            final_score_tr = problem.function(x_tr)
-
-            norm_grads_tr.append(norm_gradient_tr)
-            times_tr.append(end_time_tr)
-            final_scores_tr.append(final_score_tr)
-            iterations_tr.append(steps_tr)
-            converges_list_tr.append(converges_tr)
-            path_history_tr.append(path_tr)
-
-            
-            if starting_point.shape[0] == 2:
-                path_to_save = path
-                path_to_save_tr = path_tr
-                steps_for_calc = [np.linalg.norm(path[i] - path[i-1]) for i in range(1, len(path))]
-                steps_for_calc_tr = [np.linalg.norm(path_tr[i] - path_tr[i-1]) for i in range(1, len(path_tr))]
-            else:
-                path_to_save = []
-                path_to_save_tr = []
-                for i in range(1, len(path)):
-                    dist = np.linalg.norm(path[i] - path[i-1])
-                    path_to_save.append(dist)
-                for i in range(1, len(path_tr)):
-                    dist = np.linalg.norm(path_tr[i] - path_tr[i-1])
-                    path_to_save_tr.append(dist)
-                steps_for_calc = path_to_save
-                steps_for_calc_tr = path_to_save_tr
-
-            estimated_p = calculate_convergence_order(steps_for_calc)
-            estimated_p_tr = calculate_convergence_order(steps_for_calc_tr)
-
-            conv_list.append(estimated_p)
-            conv_list_tr.append(estimated_p_tr)
-
-
-
-    
-        print(f"Finished k={k}, Avg Iter: {np.mean(iterations)}")
-
+            norm_grads_tr = []
+            times_tr = []
+            final_scores_tr = []
+            iterations_tr = []
+            converges_list_tr = []
+            path_history_tr = []
+            conv_list_tr = []
         
-        x_random_fd.append({
-            "n": n_dim,       
-            "k": k,
-            "norm_gradient": np.mean(norm_grads),
-            "time": np.mean(times),
-            "final_score": np.mean(final_scores),
-            "iterations": np.mean(iterations),
-            "converges": np.all(converges_list),
-            "conv" : np.mean(conv_list),
-            "paths": path_history   
-            
-        })
-                    
-        x_random_fd_tr.append({
-            "n": n_dim,       
-            "k": k,
-            "norm_gradient": np.mean(norm_grads_tr),
-            "time": np.mean(times_tr),
-            "final_score": np.mean(final_scores_tr),
-            "iterations": np.mean(iterations_tr),
-            "converges": np.all(converges_list_tr),
-            "conv" : np.mean(conv_list),
-            "paths" : path_history_tr
-        })
+            # 3. Run the 5 random points
+            for starting_point in x_dataset:
+                
+                grad = problem.gradient
+                hess = lambda x: fd_solver.approximate_hessian_pentadiag(x, grad, k, step_mode="adaptive", x_ref=x, zero_floor=1e-2)
+                problem_fd = Problem_fd(problem, grad, hess)
+
+                # --- NM ---
+                start_time = time.time()
+                x, path, norm_gradient, converges, steps = modified_newt.minimize(problem_fd, starting_point)
+                end_time = time.time() - start_time
+                final_score = problem.function(x)
+                
+                # --- TR ---
+                start_time_tr = time.time()
+                x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = truncated_newt.truncated_newton(
+                    problem_fd.function, problem_fd.gradient, problem_fd.hessian, starting_point
+                )
+                end_time_tr = time.time() - start_time_tr
+                final_score_tr = problem.function(x_tr)
+
+                # --- PROCESS PATHS ---
+                if n_dim == 2:
+                    path_to_save = path
+                    path_to_save_tr = path_tr
+                    steps_for_calc = [np.linalg.norm(path[i] - path[i-1]) for i in range(1, len(path))]
+                    steps_for_calc_tr = [np.linalg.norm(path_tr[i] - path_tr[i-1]) for i in range(1, len(path_tr))]
+                else:
+                    path_to_save = [np.linalg.norm(path[i] - path[i-1]) for i in range(1, len(path))]
+                    path_to_save_tr = [np.linalg.norm(path_tr[i] - path_tr[i-1]) for i in range(1, len(path_tr))]
+                    steps_for_calc = path_to_save
+                    steps_for_calc_tr = path_to_save_tr
+
+                estimated_p = calculate_convergence_order(steps_for_calc)
+                estimated_p_tr = calculate_convergence_order(steps_for_calc_tr)
+
+                # Append NM Data
+                path_history.append(path_to_save)
+                norm_grads.append(norm_gradient)
+                times.append(end_time)
+                final_scores.append(final_score)
+                iterations.append(steps)
+                converges_list.append(converges)
+                conv_list.append(estimated_p)
+
+                # Append TR Data
+                norm_grads_tr.append(norm_gradient_tr)
+                times_tr.append(end_time_tr)
+                final_scores_tr.append(final_score_tr)
+                iterations_tr.append(steps_tr)
+                converges_list_tr.append(converges_tr)
+                path_history_tr.append(path_to_save_tr)
+                conv_list_tr.append(estimated_p_tr)
+
+            print(f"Finished n={n_dim} k={k}, Avg Iter: {np.mean(iterations):.2f}")
+
+            # Save Averaged Results
+            x_random_fd.append({
+                "n": n_dim, "k": k,
+                "norm_gradient": np.mean(norm_grads),
+                "time": np.mean(times),
+                "final_score": np.mean(final_scores),
+                "iterations": np.mean(iterations),
+                "converges": np.all(converges_list),
+                "conv" : np.nanmean(conv_list), 
+                "paths": path_history   
+            })
+                        
+            x_random_fd_tr.append({
+                "n": n_dim, "k": k,
+                "norm_gradient": np.mean(norm_grads_tr),
+                "time": np.mean(times_tr),
+                "final_score": np.mean(final_scores_tr),
+                "iterations": np.mean(iterations_tr),
+                "converges": np.all(converges_list_tr),
+                "conv" : np.nanmean(conv_list_tr), 
+                "paths" : path_history_tr
+            })
 
     x_initial_fd_df = pd.DataFrame(x_initial_fd)
     x_initial_fd_tr_df = pd.DataFrame(x_initial_fd_tr)
@@ -533,155 +523,33 @@ def final_2(x0, xRand, problem_main):
 def final_3(x0, xRand, problem_main):
     k_values = [4, 8, 12]
 
+    # Solver Setup
     modified_newt = NewtonMethod(1e-6, 1000, 0.6, 1e-4)
-    truncated_newt = TruncatedNewtonMethod(1e-6, 1000, 500, 'sl',0.6, 1e-4)
+    truncated_newt = TruncatedNewtonMethod(1e-6, 1000, 500, 'sl', 0.6, 1e-4)
+    
     x_initial_fd = []
     x_initial_fd_tr = []
 
+    # ==========================================
+    # PART 1: FIXED POINTS (x0)
+    # ==========================================
     for starting_point in x0:
-        
-
-        problem = type(problem_main)(starting_point.shape[0])
+        problem = type(problem_main)(starting_point.shape[0])   
         fd_solver = FiniteDifferences(problem)
-        
 
         for k in k_values:
-
-            grad = lambda x: fd_solver.approximate_gradient(x, k, step_mode="adaptive", x_ref=x,zero_floor=1e-2)
-            hess = lambda x: fd_solver.approximate_hessian_pentadiag(x, grad, k, step_mode="adaptive", x_ref=x,zero_floor=1e-2)
-
+            # Setup Mixed FD
+            grad = lambda x: fd_solver.approximate_gradient(x, k, step_mode="adaptive", x_ref=x,zero_floor=1e-2) 
+            hess = lambda x: fd_solver.approximate_hessian_pentadiag(x, grad, k, step_mode="adaptive", x_ref=x, zero_floor=1e-2)
             problem_fd = Problem_fd(problem, grad, hess)
 
+            # --- NM ---
             start_time = time.time()
-            x, path, norm_gradient, converges, steps = modified_newt.minimize(
-                problem_fd, starting_point
-            )
-            end_time = time.time() - start_time
-
-            #TR
-            start_time_tr = time.time()
-            x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = truncated_newt.truncated_newton(problem_fd.function, problem_fd.gradient, problem_fd.hessian, starting_point)
-            end_time_tr = time.time() - start_time_tr
-
-            final_score_tr = problem.function(x_tr)
-            final_score = problem.function(x)
-
-            if starting_point.shape[0] == 2:
-                path_to_save = path
-                path_to_save_tr = path_tr
-                steps_for_calc = [np.linalg.norm(path[i] - path[i-1]) for i in range(1, len(path))]
-                steps_for_calc_tr = [np.linalg.norm(path_tr[i] - path_tr[i-1]) for i in range(1, len(path_tr))]
-            else:
-                path_to_save = []
-                path_to_save_tr = []
-                for i in range(1, len(path)):
-                    dist = np.linalg.norm(path[i] - path[i-1])
-                    path_to_save.append(dist)
-                for i in range(1, len(path_tr)):
-                    dist = np.linalg.norm(path_tr[i] - path_tr[i-1])
-                    path_to_save_tr.append(dist)
-                steps_for_calc = path_to_save
-                steps_for_calc_tr = path_to_save_tr
-
-            estimated_p = calculate_convergence_order(steps_for_calc)
-            estimated_p_tr = calculate_convergence_order(steps_for_calc_tr)
-
-            x_initial_fd.append({
-                #"strategy": strategy,
-                "n":starting_point.shape[0],         
-                "k": k,
-                "norm_gradient": norm_gradient,
-                "time": end_time,
-                "final_score": final_score,
-                "converges": converges,
-                "iterations": steps,
-                "conv" : estimated_p,
-                "path": path_to_save,
-                
-            })
-
-            x_initial_fd_tr.append({
-                #"strategy": strategy, 
-                "n":starting_point.shape[0],         
-                "k": k,
-                "norm_gradient": norm_gradient_tr,
-                "time": end_time_tr,
-                "final_score": final_score_tr,
-                "converges": converges_tr,
-                "iterations": steps_tr,
-                "conv": estimated_p_tr,
-                "path": path_to_save_tr,
-            })
-
-
-    n_dim = xRand[3].shape[1]
-    problem = type(problem_main)(n_dim)
-    fd_solver = FiniteDifferences(problem)
-    x_random_fd = []
-    x_random_fd_tr = []
-    
-    for k in k_values:
-        # NM
-        path_history = []
-        norm_grads = []
-        times = []
-        final_scores = []
-        iterations = []
-        converges_list = []
-        conv_list = []
-        
-
-        # TR
-        norm_grads_tr = []
-        times_tr = []
-        final_scores_tr = []
-        iterations_tr = []
-        converges_list_tr = []
-        path_history_tr = []
-        conv_list_tr = []
-
-    
-        for starting_point in xRand[3]:
-            
-            grad = problem.gradient
-            hess = lambda x: fd_solver.approximate_hessian_pentadiag(x, grad, k, step_mode="adaptive", x_ref=x,zero_floor=1e-2)
-            problem_fd = Problem_fd(problem, grad, hess)
-
-            # NM
-            start_time = time.time()
-            x, path, norm_gradient, converges, steps = modified_newt.minimize(
-                problem_fd, starting_point
-            )
+            x, path, norm_gradient, converges, steps = modified_newt.minimize(problem_fd, starting_point)
             end_time = time.time() - start_time
             final_score = problem.function(x)
 
-            if starting_point.shape[0] == 2:
-                path_to_save = path
-                path_to_save_tr = path_tr
-            else:
-                path_to_save = []
-                path_to_save_tr = []
-                for i in range(1, len(path)):
-                    dist = np.linalg.norm(path[i] - path[i-1])
-                    path_to_save.append(dist)
-                for i in range(1, len(path_tr)):
-                    dist = np.linalg.norm(path_tr[i] - path_tr[i-1])
-                    path_to_save_tr.append(dist)
-                steps_for_calc = path_to_save
-                steps_for_calc_tr = path_to_save_tr
-
-            estimated_p = calculate_convergence_order(steps_for_calc)
-            estimated_p_tr = calculate_convergence_order(steps_for_calc_tr)
-
-            path_history.append(path_to_save)
-            norm_grads.append(norm_gradient)
-            times.append(end_time)
-            final_scores.append(final_score)
-            iterations.append(steps)
-            converges_list.append(converges)
-            conv_list.append(estimated_p)
-
-            # TR
+            # --- TR ---
             start_time_tr = time.time()
             x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = truncated_newt.truncated_newton(
                 problem_fd.function, problem_fd.gradient, problem_fd.hessian, starting_point
@@ -689,45 +557,152 @@ def final_3(x0, xRand, problem_main):
             end_time_tr = time.time() - start_time_tr
             final_score_tr = problem.function(x_tr)
 
-            norm_grads_tr.append(norm_gradient_tr)
-            times_tr.append(end_time_tr)
-            final_scores_tr.append(final_score_tr)
-            iterations_tr.append(steps_tr)
-            converges_list_tr.append(converges_tr)
-            path_history_tr.append(path_tr)
+            # --- Process Paths ---
+            if starting_point.shape[0] == 2:
+                # N=2: Save full vectors, calculate steps separately
+                path_to_save = path
+                path_to_save_tr = path_tr
+                steps_for_calc = [np.linalg.norm(path[i] - path[i-1]) for i in range(1, len(path))]
+                steps_for_calc_tr = [np.linalg.norm(path_tr[i] - path_tr[i-1]) for i in range(1, len(path_tr))]
+            else:
+                # N>2: Save steps only, use same list for p-calc
+                path_to_save = [np.linalg.norm(path[i] - path[i-1]) for i in range(1, len(path))]
+                path_to_save_tr = [np.linalg.norm(path_tr[i] - path_tr[i-1]) for i in range(1, len(path_tr))]
+                steps_for_calc = path_to_save
+                steps_for_calc_tr = path_to_save_tr
 
+            estimated_p = calculate_convergence_order(steps_for_calc)
+            estimated_p_tr = calculate_convergence_order(steps_for_calc_tr)
+
+            # Save Results
+            x_initial_fd.append({
+                "n": starting_point.shape[0], "k": k,
+                "norm_gradient": norm_gradient, "time": end_time,
+                "final_score": final_score, "converges": converges,
+                "iterations": steps, "conv": estimated_p, "path": path_to_save
+            })
+
+            x_initial_fd_tr.append({
+                "n": starting_point.shape[0], "k": k,
+                "norm_gradient": norm_gradient_tr, "time": end_time_tr,
+                "final_score": final_score_tr, "converges": converges_tr,
+                "iterations": steps_tr, "conv": estimated_p_tr, "path": path_to_save_tr
+            })
+
+    # ==========================================
+    # PART 2: RANDOM POINTS (xRand)
+    # ==========================================
+    x_random_fd = []
+    x_random_fd_tr = []
     
-        print(f"Finished k={k}, Avg Iter: {np.mean(iterations)}")
+    # 1. Loop Dimensions FIRST (e.g. 2, 1000, 10000...)
+    for x_dataset in xRand:
+        n_dim = x_dataset.shape[1]
+        problem = type(problem_main)(n_dim)
+        fd_solver = FiniteDifferences(problem)
 
+        # 2. Loop K values (4, 8, 12)
+        for k in k_values:
+            
+            # Reset metrics for this specific (N, k) batch
+            path_history = []
+            norm_grads = []
+            times = []
+            final_scores = []
+            iterations = []
+            converges_list = []
+            conv_list = []
+
+            norm_grads_tr = []
+            times_tr = []
+            final_scores_tr = []
+            iterations_tr = []
+            converges_list_tr = []
+            path_history_tr = []
+            conv_list_tr = []
         
-        x_random_fd.append({
-            "n": n_dim,       
-            "k": k,
-            "norm_gradient": np.mean(norm_grads),
-            "time": np.mean(times),
-            "final_score": np.mean(final_scores),
-            "iterations": np.mean(iterations),
-            "converges": np.all(converges_list),
-            "conv" : np.mean(conv_list),
-            "paths": path_history
+            # 3. Run the 5 random points
+            for starting_point in x_dataset:
+                
+                grad = lambda x: fd_solver.approximate_gradient(x, k, step_mode="adaptive", x_ref=x,zero_floor=1e-2) 
+                hess = lambda x: fd_solver.approximate_hessian_pentadiag(x, grad, k, step_mode="adaptive", x_ref=x, zero_floor=1e-2)
+                problem_fd = Problem_fd(problem, grad, hess)
 
-        })
-                    
-        x_random_fd_tr.append({
-            "n": n_dim,       
-            "k": k,
-            "norm_gradient": np.mean(norm_grads_tr),
-            "time": np.mean(times_tr),
-            "final_score": np.mean(final_scores_tr),
-            "iterations": np.mean(iterations_tr),
-            "converges": np.all(converges_list_tr),
-            "conv" : np.mean(conv_list_tr),
-            "paths" : path_history_tr
-        })
+                # --- NM ---
+                start_time = time.time()
+                x, path, norm_gradient, converges, steps = modified_newt.minimize(problem_fd, starting_point)
+                end_time = time.time() - start_time
+                final_score = problem.function(x)
+                
+                # --- TR ---
+                start_time_tr = time.time()
+                x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = truncated_newt.truncated_newton(
+                    problem_fd.function, problem_fd.gradient, problem_fd.hessian, starting_point
+                )
+                end_time_tr = time.time() - start_time_tr
+                final_score_tr = problem.function(x_tr)
+
+                # --- PROCESS PATHS ---
+                if n_dim == 2:
+                    path_to_save = path
+                    path_to_save_tr = path_tr
+                    steps_for_calc = [np.linalg.norm(path[i] - path[i-1]) for i in range(1, len(path))]
+                    steps_for_calc_tr = [np.linalg.norm(path_tr[i] - path_tr[i-1]) for i in range(1, len(path_tr))]
+                else:
+                    path_to_save = [np.linalg.norm(path[i] - path[i-1]) for i in range(1, len(path))]
+                    path_to_save_tr = [np.linalg.norm(path_tr[i] - path_tr[i-1]) for i in range(1, len(path_tr))]
+                    steps_for_calc = path_to_save
+                    steps_for_calc_tr = path_to_save_tr
+
+                estimated_p = calculate_convergence_order(steps_for_calc)
+                estimated_p_tr = calculate_convergence_order(steps_for_calc_tr)
+
+                # Append NM Data
+                path_history.append(path_to_save)
+                norm_grads.append(norm_gradient)
+                times.append(end_time)
+                final_scores.append(final_score)
+                iterations.append(steps)
+                converges_list.append(converges)
+                conv_list.append(estimated_p)
+
+                # Append TR Data
+                norm_grads_tr.append(norm_gradient_tr)
+                times_tr.append(end_time_tr)
+                final_scores_tr.append(final_score_tr)
+                iterations_tr.append(steps_tr)
+                converges_list_tr.append(converges_tr)
+                path_history_tr.append(path_to_save_tr)
+                conv_list_tr.append(estimated_p_tr)
+
+            print(f"Finished n={n_dim} k={k}, Avg Iter: {np.mean(iterations):.2f}")
+
+            # Save Averaged Results
+            x_random_fd.append({
+                "n": n_dim, "k": k,
+                "norm_gradient": np.mean(norm_grads),
+                "time": np.mean(times),
+                "final_score": np.mean(final_scores),
+                "iterations": np.mean(iterations),
+                "converges": np.all(converges_list),
+                "conv" : np.nanmean(conv_list), 
+                "paths": path_history   
+            })
+                        
+            x_random_fd_tr.append({
+                "n": n_dim, "k": k,
+                "norm_gradient": np.mean(norm_grads_tr),
+                "time": np.mean(times_tr),
+                "final_score": np.mean(final_scores_tr),
+                "iterations": np.mean(iterations_tr),
+                "converges": np.all(converges_list_tr),
+                "conv" : np.nanmean(conv_list_tr), 
+                "paths" : path_history_tr
+            })
 
     x_initial_fd_df = pd.DataFrame(x_initial_fd)
     x_initial_fd_tr_df = pd.DataFrame(x_initial_fd_tr)
     x_random_fd_df = pd.DataFrame(x_random_fd)
     x_random_fd_tr_df = pd.DataFrame(x_random_fd_tr)
             
-    return x_initial_fd_df,x_initial_fd_tr_df, x_random_fd_df,x_random_fd_tr_df
+    return x_initial_fd_df, x_initial_fd_tr_df, x_random_fd_df, x_random_fd_tr_df
