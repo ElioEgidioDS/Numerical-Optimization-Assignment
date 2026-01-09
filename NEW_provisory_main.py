@@ -111,20 +111,20 @@ def main():
     x_initial_nm.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_31.name}_final\final_2\x_initial_nm.csv",sep=',')
     x_initial_tr.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_31.name}_final\final_2\x_initial_tr.csv",sep=',')
     x_random_nm.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_31.name}_final\final_2\x_random_nm.csv",sep=',')
-    x_random_tr.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_31.name}_final\final_2\x_random_tr.csv",sep=',')
+    x_random_tr.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_31.name}_final\final_2\x_random_tr.csv",sep=',')'''
 
     x_initial_nm,x_initial_tr, x_random_nm,x_random_tr = final_3(x0,xRand,problem_31)
     x_initial_nm.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_31.name}_final\final_3\x_initial_nm.csv",sep=',')
     x_initial_tr.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_31.name}_final\final_3\x_initial_tr.csv",sep=',')
     x_random_nm.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_31.name}_final\final_3\x_random_nm.csv",sep=',')
-    x_random_tr.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_31.name}_final\final_3\x_random_tr.csv",sep=',')'''
+    x_random_tr.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_31.name}_final\final_3\x_random_tr.csv",sep=',')
 
     print("START FINAL")
-    x_initial_nm,x_initial_tr, x_random_nm,x_random_tr = final_1(x0,xRand,problem_52)
+    r'''x_initial_nm,x_initial_tr, x_random_nm,x_random_tr = final_1(x0,xRand,problem_52)
     x_initial_nm.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_52.name}_final\final_1\x_initial_nm.csv",sep=',')
     x_initial_tr.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_52.name}_final\final_1\x_initial_tr.csv",sep=',')
     x_random_nm.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_52.name}_final\final_1\x_random_nm.csv",sep=',')
-    x_random_tr.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_52.name}_final\final_1\x_random_tr.csv",sep=',')
+    x_random_tr.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_52.name}_final\final_1\x_random_tr.csv",sep=',')'''
 
     x_initial_nm,x_initial_tr, x_random_nm,x_random_tr = final_2(x0,xRand,problem_52)
     x_initial_nm.to_csv(fr"C:\Users\UTENTE\Desktop\NUMERICAL HOMEWORK\Nuova cartella\Numerical-Optimization-Assignment\csv\{problem_52.name}_final\final_2\x_initial_nm.csv",sep=',')
