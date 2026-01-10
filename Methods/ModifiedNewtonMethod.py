@@ -74,7 +74,7 @@ class NewtonMethod:
 
             if grad_norm < self.tol: #*max(1,np.linalg.norm(gradient)) #CHECK FOR OTHER STOPPING CRITERIONS
                 converge = True
-                return x, grad_norm, converge, i, np.array(path)
+                return x, grad_norm, converge, i, np.array(path), "-"
             
             if hessian.diagonal().min() > 0:
                 tau = 0
@@ -112,4 +112,4 @@ class NewtonMethod:
         print("final alpha: ", alpha)
         print("final norm of the gradient: ", grad_norm)
 
-        return x, np.linalg.norm(gradient), converge, self.max_n, np.array(path)
+        return x, np.linalg.norm(gradient), converge, self.max_n, np.array(path), "MAX"
