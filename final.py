@@ -66,7 +66,7 @@ def final_1(x0, xRand, problem_main):
 
         #NM
         start_time = time.time()
-        x, path, norm_gradient, converges, steps = modified_newt.minimize(
+        x, norm_gradient, converges, steps, path = modified_newt.minimize(
             problem, starting_point
         )
         end_time = time.time() - start_time
@@ -147,7 +147,7 @@ def final_1(x0, xRand, problem_main):
         for starting_point in starting_size:
 
             start_time = time.time()
-            x, path, norm_gradient, converges, steps = modified_newt.minimize(
+            x, norm_gradient, converges, steps, path = modified_newt.minimize(
                 problem, starting_point
             )
             end_time = time.time() - start_time
@@ -343,7 +343,7 @@ def final_2(x0, xRand, problem_main):
             problem_fd = Problem_fd(problem, grad, hess)
 
             start_time = time.time()
-            x, path, norm_gradient, converges, steps = modified_newt.minimize(
+            x, norm_gradient, converges, steps, path = modified_newt.minimize(
                 problem_fd, starting_point
             )
             end_time = time.time() - start_time
@@ -443,7 +443,7 @@ def final_2(x0, xRand, problem_main):
 
                 # --- NM ---
                 start_time = time.time()
-                x, path, norm_gradient, converges, steps = modified_newt.minimize(problem_fd, starting_point)
+                x, norm_gradient, converges, steps, path = modified_newt.minimize(problem_fd, starting_point)
                 end_time = time.time() - start_time
                 final_score = problem.function(x)
                 
@@ -545,7 +545,7 @@ def final_3(x0, xRand, problem_main):
 
             # --- NM ---
             start_time = time.time()
-            x, path, norm_gradient, converges, steps = modified_newt.minimize(problem_fd, starting_point)
+            x, norm_gradient, converges, steps, path = modified_newt.minimize(problem_fd, starting_point)
             end_time = time.time() - start_time
             final_score = problem.function(x)
 
@@ -630,7 +630,7 @@ def final_3(x0, xRand, problem_main):
 
                 # --- NM ---
                 start_time = time.time()
-                x, path, norm_gradient, converges, steps = modified_newt.minimize(problem_fd, starting_point)
+                x, norm_gradient, converges, steps, path = modified_newt.minimize(problem_fd, starting_point)
                 end_time = time.time() - start_time
                 final_score = problem.function(x)
                 
