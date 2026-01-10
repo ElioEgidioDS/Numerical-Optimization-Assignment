@@ -6,36 +6,36 @@ from scipy.linalg import cholesky_banded, cho_solve_banded, LinAlgError
 
 
 
-class ModifiedNewtonMethod:
+class NewtonMethod:
     def __init__(self, tol, max_n, bck_trk_rho, bck_trk_C1):
         self.tol = tol
         self.max_n = max_n
         self.bck_trk_c1 = bck_trk_C1
         self.bck_trk_rho = bck_trk_rho
 
-    # def line_search(self, f, gradfxk, xk, p, alpha=1, rho=0.5, c1=1e-4):
-    #     fxk = f(xk)
-    #     #grad_fxk = gradf(xk)
-    #     slope = np.dot(gradfxk, p) 
+    def line_search(self, f, gradfxk, xk, p, alpha=1, rho=0.5, c1=1e-4):
+        fxk = f(xk)
+        #grad_fxk = gradf(xk)
+        slope = np.dot(gradfxk, p) 
 
-    #     if slope >= 0: return 0
+        if slope >= 0: return 0
 
-    #     while alpha > 1e-12: 
-    #         try:
+        while alpha > 1e-12: 
+            try:
                 
-    #             x_next = xk + alpha * p
-    #             f_next = f(x_next)
+                x_next = xk + alpha * p
+                f_next = f(x_next)
                 
-    #             if f_next <= fxk + (c1 * alpha * slope):
-    #                 return alpha
+                if f_next <= fxk + (c1 * alpha * slope):
+                    return alpha
             
-    #         except (OverflowError, ValueError, RuntimeWarning):
-    #             pass
+            except (OverflowError, ValueError, RuntimeWarning):
+                pass
             
-    #         alpha *= rho
+            alpha *= rho
         
-    #     # alpha became too small
-    #     return 0.0
+        # alpha became too small
+        return 0.0
 
     def convert_to_banded(self, sparse_mat):
 
@@ -58,58 +58,57 @@ class ModifiedNewtonMethod:
         return banded_format
 
 
-    def modified_newton(self, problem,x0):
+    def minimize(self, problem,x0):
         x = x0.copy()
         path = [x.copy()]
         B = 1e-3
         I = eye(x0.shape[0], format="csr")
         converge = False
         R = None
-        bcktrk = Backtracking(self.bck_trk_c1, self.bck_trk_rho, 100)
-
+        bcktrk = Backtracking(self.bck_trk_c1,self.bck_trk_rho,100)
+            
         for i in range(self.max_n):
             gradient = problem.gradient(x)
             hessian = problem.hessian(x)
-            grad_norm = np.linalg.norm(gradient, ord=np.inf) 
 
-            if grad_norm < self.tol: #*max(1,np.linalg.norm(gradient)) #CHECK FOR OTHER STOPPING CRITERIONS
+            if np.linalg.norm(gradient, ord=np.inf) < self.tol: #*max(1,np.linalg.norm(gradient)) #CHECK FOR OTHER STOPPING CRITERIONS
                 converge = True
-                return x, grad_norm, converge, "-", i, np.array(path)
-            
-            if not np.isfinite(grad_norm):
-                return x, grad_norm, converge, "NAN", i, np.array(path)
+                return x, np.array(path), np.linalg.norm(gradient), converge, i
             
             if hessian.diagonal().min() > 0:
                 tau = 0
             else:
                 tau = B - hessian.diagonal().min()
             
-            R = None
             for j in range(20):
                 try:
                     Bk = hessian + tau*I
                     B_k_banded = self.convert_to_banded(Bk)
                     R = cholesky_banded(B_k_banded, lower= True)
+                
+
                     #p_mn = lu_fact.solve(-gradient)
+                    
                     break
                 except LinAlgError:
                     tau = max(2 * tau, B)
+
+            
             if R is not None:
-                p_mn = cho_solve_banded((R,True), -gradient)
+                p_mn = cho_solve_banded((R, True), -gradient)
             else:
                 p_mn = -gradient
 
-            alpha = bcktrk.backtrack(p_mn, x, problem.function, 1, gradient)
+            #alpha = self.line_search(problem.function, gradient, x, p_mn, alpha=1, rho=self.bck_trk_rho, c1=self.bck_trk_c1)
+            alpha = bcktrk.backtrack(p_mn,x,problem.function,1,gradient)
             
-            if alpha <= 1e-12:
-                return x, grad_norm, converge, "LS", i, np.array(path)
-            
+            #print(f"{k}:{np.linalg.norm(gradient)}")
             x = x + alpha * p_mn
             path.append(x.copy())
 
-        # print("NM DID NOT CONVERGE")
-        # print("final iter: ",i)
-        # print("final alpha: ", alpha)
-        # print("final norm of the gradient: ", grad_norm)
+        print("NM DID NOT CONVERGE")
+        print("final iter: ",i)
+        print("final alpha: ", alpha)
+        print("final norm of the gradient: ",np.linalg.norm(gradient))
 
-        return x, grad_norm, converge, "MAX", self.max_n, np.array(path)
+        return x, np.array(path), np.linalg.norm(gradient), converge, self.max_n

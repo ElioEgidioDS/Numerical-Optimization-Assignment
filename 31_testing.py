@@ -1,7 +1,7 @@
 import numpy as np
 import time
 from Problems.Problem_31 import Problem_31
-from Methods.NewtonMethod import NewtonMethod
+from Methods.ModifiedNewtonMethod import NewtonMethod
 from Methods.TruncatedNewtonMethod import TruncatedNewtonMethod
 from Methods.Finite_Differences import FiniteDifferences
 
@@ -12,7 +12,8 @@ class ProblemWrapper:
         self.mode = mode
         self.n = prob.n
 
-    def function(self, x): return self.prob.function(x)
+    def function(self, x): 
+        return self.prob.function(x)
 
     def gradient(self, x):
         if self.mode == 'full_fd':
@@ -20,7 +21,8 @@ class ProblemWrapper:
         return self.prob.gradient(x)
 
     def hessian(self, x):
-        if self.mode == 'analytical': return self.prob.hessian(x)
+        if self.mode == 'analytical': 
+            return self.prob.hessian(x)
         g_fun = self.prob.gradient if self.mode == 'mixed_fd' else lambda y: self.gradient(y)
         return self.fd.approximate_hessian_pentadiag(x, grad_fun=g_fun, k_step=6, step_mode='adaptive', zero_floor=1.0)
 
@@ -38,7 +40,7 @@ def main():
     # DEFINIZIONE PUNTI DI PARTENZA
     starting_points = {
         "PDF Standard (x0 = -1)": np.full(n, -1.0),
-        "Random [-2, 2]": np.random.uniform(-1.5, -0.5, n)
+        "Random [-2, 2]": np.random.uniform(-100, 100, n)
     }
 
     modes = ['analytical', 'mixed_fd', 'full_fd']
@@ -54,17 +56,18 @@ def main():
         for mode in modes:
             proxy = ProblemWrapper(problem_base, fd_handler, mode=mode)
             
-            # 1. Mod-Newton
-            start = time.time()
-            x_nm, _, g_nm, conv_nm, iters_nm = nm.minimize(proxy, x0)
-            t_nm = time.time() - start
-            print(f"{'Mod-Newton':<15} | {mode:<12} | {'CONV' if conv_nm else 'FAIL':<8} | {iters_nm:<5} | {t_nm:<8.4f} | {proxy.function(x_nm):<10.2e}")
+            # # 1. Mod-Newton
+            # start = time.time()
+            
+            # x_nm, _, g_nm, conv_nm, iters_nm = nm.modified_newton(proxy, x0)
+            # t_nm = time.time() - start
+            # print(f"{'Mod-Newton':<15} | {mode:<12} | {'CONV' if conv_nm else 'FAIL':<8} | {iters_nm:<5} | {t_nm:<8.4f} | {proxy.function(x_nm):<10.2e}")
 
             # 2. Trunc-Newton
             start = time.time()
-            x_tn, g_tn, conv_tn, iters_tn, _ = tn.truncated_newton(proxy.function, proxy.gradient, proxy.hessian, x0)
+            x_tn, g_tn, conv_tn, failure_reason, iters_tn, _ = tn.truncated_newton(proxy.function, proxy.gradient, proxy.hessian, x0)
             t_tn = time.time() - start
-            print(f"{'Trunc-Newton':<15} | {mode:<12} | {'CONV' if conv_tn else 'FAIL':<8} | {iters_tn:<5} | {t_tn:<8.4f} | {proxy.function(x_tn):<10.2e}")
+            print(f"{'Trunc-Newton':<15} | {mode:<12} | {'CONV' if conv_tn else 'FAIL':<8} | {failure_reason} | {iters_tn:<5} | {t_tn:<8.4f} | {proxy.function(x_tn):<10.2e}")
             print("-" * len(header))
 
 if __name__ == "__main__":

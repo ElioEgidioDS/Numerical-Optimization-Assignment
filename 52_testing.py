@@ -6,22 +6,18 @@ from Methods.TruncatedNewtonMethod import TruncatedNewtonMethod
 from Methods.Finite_Differences import FiniteDifferences
 
 class ProblemWrapper:
-    """
-    Wraps the Problem_52 instance to switch between Analytical and FD derivatives.
-    """
     def __init__(self, prob, fd_handler, mode='analytical'):
         self.prob = prob
         self.fd = fd_handler
         self.mode = mode  # 'analytical', 'mixed_fd', 'full_fd'
         self.n = prob.n
-        self.x0 = prob.x0
+        self.x0 = np.random.uniform(-10, 10, self.n)
 
     def function(self, x):
         return self.prob.function(x)
 
     def gradient(self, x):
         if self.mode == 'full_fd':
-            # Uses the FD Gradient (J^T * f)
             return self.fd.approximate_gradient(x, k_step=8, step_mode='adaptive', scheme='centered')
         return self.prob.gradient(x)
 
@@ -65,24 +61,24 @@ def main():
     for mode in modes:
         proxy = ProblemWrapper(problem_base, fd_handler, mode=mode)
         
-        # 1. Newton Method (Modified / Banded)
-        start = time.time()
-        # Note: NewtonMethod uses 'minimize(problem, x0)'
-        x_nm, _, g_norm_nm, conv_nm, iters_nm = nm.minimize(proxy, proxy.x0)
-        t_nm = time.time() - start
-        s_nm = "CONV" if conv_nm else "FAIL"
-        f_nm = proxy.function(x_nm)
-        print(f"{'Mod-Newton':<18} | {mode:<12} | {s_nm:<8} | {iters_nm:<5} | {t_nm:<8.4f} | {f_nm:<10.2e}")
+        # # 1. Newton Method (Modified / Banded)
+        # start = time.time()
+        # # Note: NewtonMethod uses 'minimize(problem, x0)'
+        # x_nm, _, g_norm_nm, conv_nm, iters_nm = nm.minimize(proxy, proxy.x0)
+        # t_nm = time.time() - start
+        # s_nm = "CONV" if conv_nm else "FAIL"
+        # f_nm = proxy.function(x_nm)
+        # print(f"{'Mod-Newton':<18} | {mode:<12} | {s_nm:<8} | {iters_nm:<5} | {t_nm:<8.4f} | {f_nm:<10.2e}")
 
         # 2. Truncated Newton Method (CG)
         start = time.time()
         # Note: TruncatedNewton uses 'truncated_newton(f, gradf, hessf, x0)'
-        x_tn, g_norm_tn, conv_tn, iters_tn, _ = tn.truncated_newton(
+        x_tn, g_norm_tn, conv_tn, failure_reason, iters_tn, _ = tn.truncated_newton(
             proxy.function, proxy.gradient, proxy.hessian, proxy.x0)
         t_tn = time.time() - start
         s_tn = "CONV" if conv_tn else "FAIL"
         f_tn = proxy.function(x_tn)
-        print(f"{'Trunc-Newton':<18} | {mode:<12} | {s_tn:<8} | {iters_tn:<5} | {t_tn:<8.4f} | {f_tn:<10.2e}")
+        print(f"{'Trunc-Newton':<18} | {mode:<12} | {s_tn:<8} | {failure_reason} | {iters_tn:<5} | {t_tn:<8.4f} | {f_tn:<10.2e}")
         print("-" * len(header))
 
 if __name__ == "__main__":

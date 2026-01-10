@@ -52,10 +52,10 @@ class Problem_31:
         grad += f * diag
 
         # contribution of [f_{k+1}] ( k < n)
-        grad[:-1] += (-2) * f[1:] 
+        grad[:-1] += (-1) * f[1:] 
         
         # contribution of [f_{k-1}] (k > 0)
-        grad[1:] += (-1) * f[:-1]
+        grad[1:] += (-2) * f[:-1]
 
         return grad
 
