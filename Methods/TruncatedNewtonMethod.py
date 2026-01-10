@@ -145,12 +145,13 @@ class TruncatedNewtonMethod:
         k = 0
         flag_convergence = False
         bcktrk = Backtracking(self.c1,self.rho,100)
+        flag = "x"
 
         for k in range(self.kmax): 
             
             if grad_xk_norm < self.tol:
                 flag_convergence = True
-                return xk, grad_xk_norm, flag_convergence, k, np.array(xk_sequence)
+                return xk, grad_xk_norm, flag_convergence, k, np.array(xk_sequence), flag
             
             eta_k = self.forcing_term(grad_xk_norm)
 
@@ -179,4 +180,4 @@ class TruncatedNewtonMethod:
         print("final alpha: ", alpha)
         print("final norm of the gradient: ",grad_xk_norm)
 
-        return xk, grad_xk_norm, flag_convergence, k, np.array(xk_sequence)
+        return xk, grad_xk_norm, flag_convergence, k, np.array(xk_sequence), flag
