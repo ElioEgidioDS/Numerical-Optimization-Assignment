@@ -58,7 +58,7 @@ class NewtonMethod:
         return banded_format
 
 
-    def minimize(self, problem,x0):
+    def modified_newton(self, problem,x0):
         x = x0.copy()
         path = [x.copy()]
         B = 1e-3

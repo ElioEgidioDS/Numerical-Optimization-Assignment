@@ -1,7 +1,7 @@
 import time
 import numpy as np
 import pandas as pd
-from Methods.NewtonMethod import NewtonMethod
+from Methods.ModifiedNewtonMethod import NewtonMethod
 from Problems.Problem_31 import Problem_31
 from Problems.Problem_52 import Problem_52
 import matplotlib.pyplot as plt
@@ -63,7 +63,7 @@ def iterate_fd(x0, xRand):
                 problem_31_fd = Problem_31_fd(problem_31, grad, hess)
 
                 start_time = time.time()
-                x, path, norm_gradient, converges, steps = modified_newt.minimize(
+                x, path, norm_gradient, converges, steps = modified_newt.modified_newton(
                     problem_31_fd, starting_point
                 )
                 end_time = time.time() - start_time
@@ -135,7 +135,7 @@ def iterate_fd(x0, xRand):
 
                 # NM
                 start_time = time.time()
-                x, path, norm_gradient, converges, steps = modified_newt.minimize(
+                x, path, norm_gradient, converges, steps = modified_newt.modified_newton(
                     problem_31_fd, starting_point
                 )
                 end_time = time.time() - start_time
@@ -234,7 +234,7 @@ def iterate_tol(x0, xRand):
 
             #NM
             start_time = time.time()
-            x, path, norm_gradient, converges, steps = modified_newt.minimize(
+            x, path, norm_gradient, converges, steps = modified_newt.modified_newton(
                 problem_31, starting_point
             )
             end_time = time.time() - start_time
@@ -312,7 +312,7 @@ def iterate_tol(x0, xRand):
             for starting_point in starting_size:
 
                 start_time = time.time()
-                x, path, norm_gradient, converges, steps = modified_newt.minimize(
+                x, path, norm_gradient, converges, steps = modified_newt.modified_newton(
                     problem_31, starting_point
                 )
                 end_time = time.time() - start_time
@@ -465,7 +465,7 @@ def iterate_bcktrk(x0,xRand):
                 problem_31 = Problem_31(starting_point.shape[0])
                 
                 start_time = time.time()
-                x, path, norm_gradient, converges, steps = modified_newt.minimize(
+                x, path, norm_gradient, converges, steps = modified_newt.modified_newton(
                     problem_31, starting_point
                 )
                 end_time = time.time() - start_time
@@ -533,7 +533,7 @@ def iterate_bcktrk(x0,xRand):
 
                 # NM
                 start_time = time.time()
-                x, path, norm_gradient, converges, steps = modified_newt.minimize(
+                x, path, norm_gradient, converges, steps = modified_newt.modified_newton(
                     problem_31, starting_point
                 )
                 end_time = time.time() - start_time

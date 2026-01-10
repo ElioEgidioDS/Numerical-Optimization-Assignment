@@ -1,9 +1,9 @@
 import time
 import numpy as np
 import pandas as pd
-from Methods.NewtonMethod import NewtonMethod
+from Methods.ModifiedNewtonMethod import ModifiedNewtonMethod
 from Problems.Problem_fd import Problem_fd
-from Problems.Problem_52 import Problem_52
+from Problems.Problem_52 import Problesm_52
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 from Methods.TruncatedNewtonMethod import TruncatedNewtonMethod
@@ -51,7 +51,7 @@ def final_1(x0, xRand, problem_main):
     all_results = {}
     tol = 1e-6
 
-    modified_newt = NewtonMethod(tol, 1000, 0.6, 1e-4)
+    modified_newt = ModifiedNewtonMethod(tol, 1000, 0.6, 1e-4)
     truncated_newt = TruncatedNewtonMethod(tol, 1000, 1000, 'sl', 0.6, 1e-4)
 
     x_initial_results = {}
@@ -324,7 +324,7 @@ def final_1(x0, xRand, problem_main):
 def final_2(x0, xRand, problem_main):
     k_values = [4, 8, 12]
 
-    modified_newt = NewtonMethod(1e-6, 1000, 0.6, 1e-4)
+    modified_newt = ModifiedNewtonMethod(1e-6, 1000, 0.6, 1e-4)
     truncated_newt = TruncatedNewtonMethod(1e-6, 1000, 500, 'sl', 0.6, 1e-4)
     x_initial_fd = []
     x_initial_fd_tr = []
@@ -524,7 +524,7 @@ def final_3(x0, xRand, problem_main):
     k_values = [4, 8, 12]
 
     # Solver Setup
-    modified_newt = NewtonMethod(1e-6, 1000, 0.6, 1e-4)
+    modified_newt = ModifiedNewtonMethod(1e-6, 1000, 0.6, 1e-4)
     truncated_newt = TruncatedNewtonMethod(1e-6, 1000, 500, 'sl', 0.6, 1e-4)
     
     x_initial_fd = []

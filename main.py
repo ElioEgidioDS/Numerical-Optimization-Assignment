@@ -1,7 +1,7 @@
 import time
 import numpy as np
 import pandas as pd
-from Methods.NewtonMethod import NewtonMethod
+from Methods.ModifiedNewtonMethod import NewtonMethod
 from Problems.Problem_64 import Problem_64
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
@@ -94,7 +94,7 @@ def main():
                 problem_64 = Problem_64(starting_point.shape[0],10)
 
                 start_time = time.time()
-                x, path, norm_gradient, converges, steps = modified_newt.minimize(problem_64,starting_point,mode='exact')
+                x, path, norm_gradient, converges, steps = modified_newt.modified_newton(problem_64,starting_point,mode='exact')
             
                 end_time = time.time() - start_time
 
@@ -116,7 +116,7 @@ def main():
                 problem_64 = Problem_64(starting_point.shape[0],10)
 
                 start_time = time.time()
-                x, path, norm_gradient, converges, steps = modified_newt.minimize(problem_64,starting_point,mode='exact')
+                x, path, norm_gradient, converges, steps = modified_newt.modified_newton(problem_64,starting_point,mode='exact')
                 #print(f"norm of the gradient:{norm_gradient}")
             
                 end_time = time.time() - start_time
@@ -149,7 +149,7 @@ def main():
                     
 
                     start_time = time.time()
-                    x, path, norm_gradient, converges, steps = modified_newt.minimize(problem_64,starting_point,mode='exact')
+                    x, path, norm_gradient, converges, steps = modified_newt.modified_newton(problem_64,starting_point,mode='exact')
                     #(f"norm of the gradient:{norm_gradient}")
                 
                     end_time = time.time() - start_time
