@@ -1,7 +1,7 @@
 import time
 import numpy as np
 import pandas as pd
-from Methods.ModifiedNewtonMethod import NewtonMethod
+from Methods.ModifiedNewtonMethod import ModifiedNewtonMethod
 from Problems.Problem_fd import Problem_fd
 from Problems.Problem_52 import Problem_52
 import matplotlib.pyplot as plt

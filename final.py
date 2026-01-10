@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from Methods.ModifiedNewtonMethod import ModifiedNewtonMethod
 from Problems.Problem_fd import Problem_fd
-from Problems.Problem_52 import Problesm_52
+from Problems.Problem_52 import Problem_52
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 from Methods.TruncatedNewtonMethod import TruncatedNewtonMethod
@@ -66,7 +66,7 @@ def final_1(x0, xRand, problem_main):
 
         #NM
         start_time = time.time()
-        x, norm_gradient, converges, steps, path, failure_reason = modified_newt.minimize(
+        x, norm_gradient, converges, steps, path, failure_reason = modified_newt.modified_newton(
             problem, starting_point
         )
         end_time = time.time() - start_time
@@ -151,7 +151,7 @@ def final_1(x0, xRand, problem_main):
         for starting_point in starting_size:
 
             start_time = time.time()
-            x, norm_gradient, converges, steps, path, failure_reason = modified_newt.minimize(
+            x, norm_gradient, converges, steps, path, failure_reason = modified_newt.modified_newton(
                 problem, starting_point
             )
             end_time = time.time() - start_time
@@ -355,7 +355,7 @@ def final_2(x0, xRand, problem_main):
             problem_fd = Problem_fd(problem, grad, hess)
 
             start_time = time.time()
-            x, norm_gradient, converges, steps, path, failure_reason = modified_newt.minimize(
+            x, norm_gradient, converges, steps, path, failure_reason = modified_newt.modified_newton(
                 problem_fd, starting_point
             )
             end_time = time.time() - start_time
@@ -459,7 +459,7 @@ def final_2(x0, xRand, problem_main):
 
                 # --- NM ---
                 start_time = time.time()
-                x, norm_gradient, converges, steps, path, failure_reason = modified_newt.minimize(problem_fd, starting_point)
+                x, norm_gradient, converges, steps, path, failure_reason = modified_newt.modified_newton(problem_fd, starting_point)
                 end_time = time.time() - start_time
                 final_score = problem.function(x)
                 
@@ -565,7 +565,7 @@ def final_3(x0, xRand, problem_main):
 
             # --- NM ---
             start_time = time.time()
-            x, norm_gradient, converges, steps, path, failure_reason = modified_newt.minimize(problem_fd, starting_point)
+            x, norm_gradient, converges, steps, path, failure_reason = modified_newt.modified_newton(problem_fd, starting_point)
             end_time = time.time() - start_time
             final_score = problem.function(x)
 
@@ -654,7 +654,7 @@ def final_3(x0, xRand, problem_main):
 
                 # --- NM ---
                 start_time = time.time()
-                x, norm_gradient, converges, steps, path, failure_reason = modified_newt.minimize(problem_fd, starting_point)
+                x, norm_gradient, converges, steps, path, failure_reason = modified_newt.modified_newton(problem_fd, starting_point)
                 end_time = time.time() - start_time
                 final_score = problem.function(x)
                 
