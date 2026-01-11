@@ -3,7 +3,7 @@ import time
 import numpy as np
 import pandas as pd
 
-from Methods.NewtonMethod import NewtonMethod
+from Methods.ModifiedNewtonMethod import ModifiedNewtonMethod
 from Methods.TruncatedNewtonMethod import TruncatedNewtonMethod
 from Methods.Finite_Differences import FiniteDifferences
 from Problems.Problem_fd import Problem_fd
@@ -70,7 +70,7 @@ def _unpack_nm_output(out):
             return out[0], out[1], out[2], out[3], out[4], out[5]
         if len(out) == 5:
             return out[0], out[1], out[2], out[3], out[4], "x"
-    raise ValueError("unexpected return format from NewtonMethod.minimize")
+    raise ValueError("unexpected return format from ModifiedNewtonMethod.modified_newton")
 
 
 def _unpack_tr_output(out):
@@ -133,7 +133,7 @@ def _append_paths_n2(path_rows, run_id, problem_name, n, method, case, h_mode, k
 
 def _run_one_nm(nm, problem_proxy, problem_base, x0):
     t0 = time.time()
-    out = nm.minimize(problem_proxy, x0)
+    out = nm.modified_newton(problem_proxy, x0)
     tsec = time.time() - t0
 
     x, path, grad_norm, success, iters, flag = _unpack_nm_output(out)
@@ -226,7 +226,7 @@ def final(
     log(f"START final() | Problem={problem_name} | dims={dims} | cases={cases} | tol={tol}")
     log(f"Output: final='{out_final_csv}' | paths='{out_paths_csv}' | append={append_to_existing}")
 
-    nm = NewtonMethod(tol, max_iter_nm, rho, c1)
+    nm = ModifiedNewtonMethod(tol, max_iter_nm, rho, c1)
     tr = TruncatedNewtonMethod(tol, max_iter_tr, inner_max_iter_tr, "sl", rho, c1)
 
     rows = []

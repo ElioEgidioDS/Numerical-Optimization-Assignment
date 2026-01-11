@@ -78,10 +78,7 @@ class TruncatedNewtonMethod:
         # z = p
     def inner_CG(self, B, c, z0, etak):
 
-<<<<<<< HEAD
-=======
         failure_reason = "-"
->>>>>>> flag-addition
         # 1. Initialization
         # Start with p = 0 (so xk = 0 in local space)
         p_sol = np.zeros_like(c) 
@@ -95,11 +92,7 @@ class TruncatedNewtonMethod:
         # Residual norm for stopping condition
         norm_c = np.linalg.norm(c)
         if norm_c < 1e-16: 
-<<<<<<< HEAD
-            return p_sol
-=======
             return p_sol, failure_reason
->>>>>>> flag-addition
 
         # 2. CG Loop
         for j in range(self.jmax):
@@ -118,17 +111,10 @@ class TruncatedNewtonMethod:
                 if j == 0:
                     # If it happens at the very first step, 
                     # the Hessian is bad immediately. Return steepest descent (c).
-<<<<<<< HEAD
-                    return c
-                else:
-                    # Otherwise, return the accumulated solution
-                    return p_sol
-=======
                     return c, failure_reason
                 else:
                     # Otherwise, return the accumulated solution
                     return p_sol, failure_reason
->>>>>>> flag-addition
             
             # --- Standard CG Steps ---
             alpha = np.dot(r, r) / dBd
@@ -138,11 +124,7 @@ class TruncatedNewtonMethod:
             
             # Check convergence (Relative Residual)
             if np.linalg.norm(r_next) / norm_c < etak:
-<<<<<<< HEAD
-                return p_next
-=======
                 return p_next, failure_reason
->>>>>>> flag-addition
             
             # Update search direction for next step
             beta = np.dot(r_next, r_next) / np.dot(r, r)
@@ -152,12 +134,8 @@ class TruncatedNewtonMethod:
             r = r_next
             p_sol = p_next
             
-<<<<<<< HEAD
-        return p_sol
-=======
         failure_reason = "GC"
         return p_sol, failure_reason
->>>>>>> flag-addition
 
 
     def truncated_newton(self, f, gradf, hessf, x0):
@@ -175,15 +153,11 @@ class TruncatedNewtonMethod:
             
             if grad_xk_norm < self.tol:
                 flag_convergence = True
-<<<<<<< HEAD
-                return xk, grad_xk_norm, flag_convergence, k, np.array(xk_sequence), flag
-=======
                 return xk, grad_xk_norm, flag_convergence, k, np.array(xk_sequence), "-"
             
             # SEE IF NEEDS TO BE DELETED
             if not np.isfinite(grad_xk_norm):
                 return xk, grad_xk_norm, flag_convergence, k, np.array(xk_sequence), "NaN"
->>>>>>> flag-addition
             
             eta_k = self.forcing_term(grad_xk_norm)
 
@@ -200,11 +174,7 @@ class TruncatedNewtonMethod:
             #alpha = self.line_search(f, grad_xk, xk, p_tn, alpha=1, rho=self.rho, c1=self.c1)
             alpha = bcktrk.backtrack(p_tn,xk,f,1,grad_xk)
             if alpha == 0:
-<<<<<<< HEAD
-                break 
-=======
                  return xk, grad_xk_norm, False, k, np.array(xk_sequence), "LS"
->>>>>>> flag-addition
             xk = xk + alpha * p_tn   
             xk_sequence.append(xk.copy())
 
@@ -216,12 +186,8 @@ class TruncatedNewtonMethod:
         print("final alpha: ", alpha)
         print("final norm of the gradient: ",grad_xk_norm)
 
-<<<<<<< HEAD
-        return xk, grad_xk_norm, flag_convergence, k, np.array(xk_sequence), flag
-=======
         if failure_CG != "-":
             failure_reason = failure_CG
         else:
             failure_reason = "MAX"
             return xk, grad_xk_norm, flag_convergence, k, np.array(xk_sequence), failure_reason
->>>>>>> flag-addition
