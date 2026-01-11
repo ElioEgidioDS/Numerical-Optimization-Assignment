@@ -130,6 +130,34 @@ def _append_paths_n2(path_rows, run_id, problem_name, n, method, case, h_mode, k
             "x2": float(P[k_iter, 1]),
         })
 
+def _append_step_norms(norm_rows, run_id, problem_name, n, method, case, h_mode, k_fd, tol, start_type, point_id, path):
+    """
+    Saves the step norms ||x_{k+1} - x_k|| into a list of dicts.
+    """
+    if path is None:
+        return
+
+    # Helper from your existing code to get step sizes
+    steps = _steps_from_path(path)
+    
+    if steps is None or len(steps) == 0:
+        return
+
+    for k_step, step_val in enumerate(steps):
+        norm_rows.append({
+            "Problem": problem_name,
+            "Size":n,
+            "Method": method,
+            "Case": case,
+            "h_mode": h_mode,
+            "k_fd": k_fd,
+            "tol": tol,
+            "start_type": start_type,
+            "path_id": point_id,
+            "run_id": run_id,
+            "k": int(k_step),            
+            "step_norm": float(step_val) 
+        })
 
 def _run_one_nm(nm, problem_proxy, problem_base, x0):
     t0 = time.time()
@@ -191,6 +219,7 @@ def final(
     cases=("Exact", "Mixed FD", "Full FD"),
     out_final_csv=os.path.join("csv", "final", "final_results.csv"),
     out_paths_csv=os.path.join("csv", "path", "paths_n2.csv"),
+    out_norms_csv=os.path.join("csv", "norms", "step_norms.csv"),
     append_to_existing=False,
 ):
     """
@@ -231,6 +260,7 @@ def final(
 
     rows = []
     path_rows = []
+    norm_rows = []
     run_id_counter = 0
 
     def get_xbar(n):
@@ -309,7 +339,12 @@ def final(
                 )
                 add_result_row("nm", case, "", np.nan, start_type, point_id, run_id,
                                gnorm, iters, ok, flag, q, tsec, fval, plen, last_step)
+                
                 _append_paths_n2(path_rows, run_id, problem_name, n, "nm", case, "", np.nan, tol, start_type, point_id, path)
+
+                if ok:
+                    _append_step_norms(norm_rows, run_id, problem_name, n, "nm", case, "", np.nan, tol, start_type, point_id, path)
+
                 log(f"Done run={run_id} | {case} | n={n} | start={start_type}:{point_id} | nm | ok={ok} | iters={iters} | ||g||={gnorm:.3e} | f={fval:.3e} | t={tsec:.2f}s | flag={flag}")
 
                 # Truncated Newton
@@ -318,7 +353,11 @@ def final(
                 )
                 add_result_row("tr", case, "", np.nan, start_type, point_id, run_id,
                                gnorm, iters, ok, flag, q, tsec, fval, plen, last_step)
+                
                 _append_paths_n2(path_rows, run_id, problem_name, n, "tr", case, "", np.nan, tol, start_type, point_id, path)
+                if ok:
+                    _append_step_norms(norm_rows, run_id, problem_name, n,"tr", case, "", np.nan, tol, start_type, point_id, path)
+
                 log(f"Done run={run_id} | {case} | n={n} | start={start_type}:{point_id} | tr | ok={ok} | iters={iters} | ||g||={gnorm:.3e} | f={fval:.3e} | t={tsec:.2f}s | flag={flag}")
 
         # ----------------------------
@@ -356,7 +395,11 @@ def final(
                         )
                         add_result_row("nm", case, h_mode, int(k_fd), start_type, point_id, run_id,
                                        gnorm, iters, ok, flag, q, tsec, fval, plen, last_step)
+                        
                         _append_paths_n2(path_rows, run_id, problem_name, n, "nm", case, h_mode, int(k_fd), tol, start_type, point_id, path)
+                        if ok:
+                            _append_step_norms(norm_rows, run_id, problem_name,n, "nm", case, h_mode, int(k_fd), tol, start_type, point_id, path)
+
                         log(f"Done run={run_id} | {case} | n={n} | {h_mode},k={k_fd} | start={start_type}:{point_id} | nm | ok={ok} | iters={iters} | ||g||={gnorm:.3e} | f={fval:.3e} | t={tsec:.2f}s | flag={flag}")
 
                         # Truncated Newton
@@ -365,7 +408,11 @@ def final(
                         )
                         add_result_row("tr", case, h_mode, int(k_fd), start_type, point_id, run_id,
                                        gnorm, iters, ok, flag, q, tsec, fval, plen, last_step)
+                        
                         _append_paths_n2(path_rows, run_id, problem_name, n, "tr", case, h_mode, int(k_fd), tol, start_type, point_id, path)
+                        if ok:
+                            _append_step_norms(norm_rows, run_id, problem_name, n,"tr", case, h_mode, int(k_fd), tol, start_type, point_id, path)
+
                         log(f"Done run={run_id} | {case} | n={n} | {h_mode},k={k_fd} | start={start_type}:{point_id} | tr | ok={ok} | iters={iters} | ||g||={gnorm:.3e} | f={fval:.3e} | t={tsec:.2f}s | flag={flag}")
 
         # ----------------------------
@@ -409,7 +456,11 @@ def final(
                         )
                         add_result_row("nm", case, h_mode, int(k_fd), start_type, point_id, run_id,
                                        gnorm, iters, ok, flag, q, tsec, fval, plen, last_step)
+                        
                         _append_paths_n2(path_rows, run_id, problem_name, n, "nm", case, h_mode, int(k_fd), tol, start_type, point_id, path)
+                        if ok:
+                            _append_step_norms(norm_rows, run_id, problem_name, n,"nm", case, h_mode, int(k_fd), tol, start_type, point_id, path)
+
                         log(f"Done run={run_id} | {case} | n={n} | {h_mode},k={k_fd} | start={start_type}:{point_id} | nm | ok={ok} | iters={iters} | ||g||={gnorm:.3e} | f={fval:.3e} | t={tsec:.2f}s | flag={flag}")
 
                         # Truncated Newton
@@ -418,18 +469,24 @@ def final(
                         )
                         add_result_row("tr", case, h_mode, int(k_fd), start_type, point_id, run_id,
                                        gnorm, iters, ok, flag, q, tsec, fval, plen, last_step)
+                        
                         _append_paths_n2(path_rows, run_id, problem_name, n, "tr", case, h_mode, int(k_fd), tol, start_type, point_id, path)
+                        if ok:
+                            _append_step_norms(norm_rows, run_id, problem_name, n,"tr", case, h_mode, int(k_fd), tol, start_type, point_id, path)
+
                         log(f"Done run={run_id} | {case} | n={n} | {h_mode},k={k_fd} | start={start_type}:{point_id} | tr | ok={ok} | iters={iters} | ||g||={gnorm:.3e} | f={fval:.3e} | t={tsec:.2f}s | flag={flag}")
 
     df_final = pd.DataFrame(rows)
     df_paths = pd.DataFrame(path_rows)
+    df_norms = pd.DataFrame(norm_rows)
 
     log(f"Saving CSVs... final_rows={len(df_final)} | paths_rows={len(df_paths)}")
     _save_csv(df_final, out_final_csv, append=append_to_existing)
     _save_csv(df_paths, out_paths_csv, append=append_to_existing)
+    _save_csv(df_norms, out_norms_csv, append=append_to_existing)
 
     log("END final()")
-    return df_final, df_paths
+    return df_final, df_paths, df_norms
 
 
 def build_starting_points(problem_class, n_list, runs_per_n=5, seed=352283):
@@ -466,12 +523,13 @@ def main():
 
     out_final = os.path.join("csv", "final", "final_results.csv")
     out_paths = os.path.join("csv", "path", "paths_n2.csv")
+    out_norms = os.path.join("csv", "norms", "convergence_errors.csv")
 
     for idx, problem_class in enumerate(problems):
         x0, xRand = build_starting_points(problem_class, n_list, runs_per_n=5, seed=352283)
         problem_main = problem_class(n_list[0])
 
-        df_final, df_paths = final(
+        df_final, df_paths , df_norms = final(
             x0=x0,
             xRand=xRand,
             problem_main=problem_main,
@@ -487,6 +545,7 @@ def main():
             cases=("Exact", "Mixed FD", "Full FD"),
             out_final_csv=out_final,
             out_paths_csv=out_paths,
+            out_norms_csv=out_norms,
             append_to_existing=(idx > 0),  # prima volta sovrascrive, poi appende
         )
 
@@ -495,6 +554,7 @@ def main():
     print("Saved:")
     print(" -", out_final)
     print(" -", out_paths)
+    print(" -", out_norms)
 
 
 if __name__ == "__main__":
