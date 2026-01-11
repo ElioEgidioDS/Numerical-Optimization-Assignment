@@ -28,7 +28,7 @@ PATHS_CSV = CSV_ROOT / "path" / "paths_n2.csv"
 GRID_RES = 220              # grid resolution per axis for background (keep moderate for speed)
 GRID_LEVELS = 120           # more levels => smoother fill
 BG_GAMMA = 0.85             # <1 => smoother contrast
-VIRIDIS_BLEND = 0.18        # 0..1: blend viridis towards white (less "acceso")
+VIRIDIS_BLEND = 0.3       # 0..1: blend viridis towards white (less "acceso")
 
 DRAW_CONTOUR_LINES = True
 CONTOUR_LINE_LEVELS = 14
