@@ -113,4 +113,4 @@ class ModifiedNewtonMethod:
         print("final alpha: ", alpha)
         print("final norm of the gradient: ", grad_norm)
 
-        return x, np.linalg.norm(gradient), converge, self.max_n, np.array(path), "MAX"
+        return x, grad_norm, converge, self.max_n, np.array(path), "MAX"
