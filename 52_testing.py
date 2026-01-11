@@ -1,7 +1,7 @@
 import numpy as np
 import time
 from Problems.Problem_52 import Problem_52
-from Methods.NewtonMethod import NewtonMethod
+from Methods.ModifiedNewtonMethod import NewtonMethod
 from Methods.TruncatedNewtonMethod import TruncatedNewtonMethod
 from Methods.Finite_Differences import FiniteDifferences
 
@@ -68,7 +68,7 @@ def main():
         # 1. Newton Method (Modified / Banded)
         start = time.time()
         # Note: NewtonMethod uses 'minimize(problem, x0)'
-        x_nm, _, g_norm_nm, conv_nm, iters_nm = nm.minimize(proxy, proxy.x0)
+        x_nm, _, g_norm_nm, conv_nm, iters_nm = nm.modified_newton(proxy, proxy.x0)
         t_nm = time.time() - start
         s_nm = "CONV" if conv_nm else "FAIL"
         f_nm = proxy.function(x_nm)

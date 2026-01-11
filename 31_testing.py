@@ -1,7 +1,7 @@
 import numpy as np
 import time
 from Problems.Problem_31 import Problem_31
-from Methods.NewtonMethod import NewtonMethod
+from Methods.ModifiedNewtonMethod import NewtonMethod
 from Methods.TruncatedNewtonMethod import TruncatedNewtonMethod
 from Methods.Finite_Differences import FiniteDifferences
 
@@ -56,7 +56,7 @@ def main():
             
             # 1. Mod-Newton
             start = time.time()
-            x_nm, _, g_nm, conv_nm, iters_nm = nm.minimize(proxy, x0)
+            x_nm, _, g_nm, conv_nm, iters_nm = nm.modified_newton(proxy, x0)
             t_nm = time.time() - start
             print(f"{'Mod-Newton':<15} | {mode:<12} | {'CONV' if conv_nm else 'FAIL':<8} | {iters_nm:<5} | {t_nm:<8.4f} | {proxy.function(x_nm):<10.2e}")
 
