@@ -16,29 +16,29 @@ class TruncatedNewtonMethod:
         self.c1 = c1
 
 
-    def line_search(self, f, grad_fxk, xk, p, alpha=1, rho=0.5, c1=1e-4):
-        fxk = f(xk)
-        #grad_fxk = gradf(xk)
-        slope = np.dot(grad_fxk, p) 
+    # def line_search(self, f, grad_fxk, xk, p, alpha=1, rho=0.5, c1=1e-4):
+    #     fxk = f(xk)
+    #     #grad_fxk = gradf(xk)
+    #     slope = np.dot(grad_fxk, p) 
 
-        if slope >= 0: return 0
+    #     if slope >= 0: return 0
 
-        while alpha > 1e-12: 
-            try:
+    #     while alpha > 1e-12: 
+    #         try:
                 
-                x_next = xk + alpha * p
-                f_next = f(x_next)
+    #             x_next = xk + alpha * p
+    #             f_next = f(x_next)
                 
-                if f_next <= fxk + (c1 * alpha * slope):
-                    return alpha
+    #             if f_next <= fxk + (c1 * alpha * slope):
+    #                 return alpha
             
-            except (OverflowError, ValueError, RuntimeWarning):
-                pass
+    #         except (OverflowError, ValueError, RuntimeWarning):
+    #             pass
             
-            alpha *= rho
+    #         alpha *= rho
         
-        # alpha became too small
-        return 0.0
+    #     # alpha became too small
+    #     return 0.0
     
 
     def forcing_term(self, gradient_norm):
@@ -51,23 +51,23 @@ class TruncatedNewtonMethod:
             
     
 
-    # computed product B_precond @ d
-    # L, U: result of factorization
-    def mat_vec_precond(self, B, d, L, U): 
-        # full product to be computed: B_preconditioned @ d 
-        # equivalent to L^{-1} @ B @ U^{-1} @ d
-        # divided into three sub operations
+    # # computed product B_precond @ d
+    # # L, U: result of factorization
+    # def mat_vec_precond(self, B, d, L, U): 
+    #     # full product to be computed: B_preconditioned @ d 
+    #     # equivalent to L^{-1} @ B @ U^{-1} @ d
+    #     # divided into three sub operations
 
-        # [U^{-1} @ d] found by solving linear system [U @ prod1 = d]
-        prod1 = spsolve_triangular(U, d, lower=False)
+    #     # [U^{-1} @ d] found by solving linear system [U @ prod1 = d]
+    #     prod1 = spsolve_triangular(U, d, lower=False)
         
-        # [B @ prod1] computed directly
-        prod2 = B @ prod1
+    #     # [B @ prod1] computed directly
+    #     prod2 = B @ prod1
 
-        # [L^{-1} @ prod2] found by solving linear system [L @ prod3 = prod2]
-        prod3 = spsolve_triangular(L, prod2, lower=True)
+    #     # [L^{-1} @ prod2] found by solving linear system [L @ prod3 = prod2]
+    #     prod3 = spsolve_triangular(L, prod2, lower=True)
         
-        return prod3
+    #     return prod3
 
 
 
@@ -78,67 +78,64 @@ class TruncatedNewtonMethod:
         # z = p
     def inner_CG(self, B, c, z0, etak):
 
-        if not issparse(B):
-            B = csr_matrix(B)
-
-    # Incomplete LU factorization B ~ L * U 
-        try: 
-            ilu_fact = spilu(B, fill_factor=10, drop_tol=1e-4)
-            L = ilu_fact.L
-            U = ilu_fact.U
-        except (RuntimeError, ValueError):
-            return c.copy()
+        failure_reason = "-"
+        # 1. Initialization
+        # Start with p = 0 (so xk = 0 in local space)
+        p_sol = np.zeros_like(c) 
         
-        # B'y = c'    
-        # c' = L^{-1} * c by solving L^T c = c'
-        c_prime = spsolve_triangular(L, c, lower=True)
+        # r = c - B*p_sol = c
+        r = c.copy()
         
-        y = np.zeros_like(z0)
-
-        # initializations
-        rk = c_prime.copy()
-        dk = rk.copy()
+        # d is the search direction
+        d = r.copy()
         
-        norm_c_prime = np.linalg.norm(c_prime)
-        if norm_c_prime < 1e-16: 
-            #it would be considered as zero and the division would fail
-            return np.zeros_like(z0)
-        
-        relres = np.linalg.norm(rk) / norm_c_prime
-        j = 0
+        # Residual norm for stopping condition
+        norm_c = np.linalg.norm(c)
+        if norm_c < 1e-16: 
+            return p_sol, failure_reason
 
-
-        while (j < self.jmax and relres > etak): 
+        # 2. CG Loop
+        for j in range(self.jmax):
             
-            # B @ dk   ==>   B_prime @ dk 
-            Bd_cond = self.mat_vec_precond(B, dk, L, U)
-
-            # dk.T @ B @ dk    ==>   dk @ B_prime @ dk (not explicitely)   
-            dBd_cond = np.dot(dk.T, Bd_cond)
+            # --- Matrix-Vector Product ---
+            # This is the only expensive step
+            Bd = B @ d
             
-            # check if postitive definite
-            # theoretically dBd > 0, but bc of machine precision we use a tolerance
-            if (dBd_cond > 1e-12):      
-                        
-                alpha = np.dot(rk.T, rk) / dBd_cond
-                y = y + alpha * dk
-                r_next = rk - alpha * Bd_cond
-                beta = np.dot(r_next.T, r_next)/np.dot(rk.T, rk)
-                dk = r_next + beta * dk
-                rk = r_next
-                
-                relres = np.linalg.norm(rk) / norm_c_prime
-                j += 1
-
-            else: # not positive definite
-                
-                if j == 0: # if it stopped at the first iteration
-                    return spsolve_triangular(U, dk, lower=False)
-                
-                else: # if it stopped ater the first iteration
-                    return spsolve_triangular(U, y, lower=False)
-                    
-        return spsolve_triangular(U, y, lower=False)
+            # --- Curvature Check (d^T B d) ---
+            dBd = np.dot(d, Bd)
+            
+            # CRITICAL: Truncated Newton Logic
+            # If we encounter negative curvature (indefinite Hessian),
+            # we must stop and return the best direction found so far.
+            if dBd <= 1e-12:
+                if j == 0:
+                    # If it happens at the very first step, 
+                    # the Hessian is bad immediately. Return steepest descent (c).
+                    return c, failure_reason
+                else:
+                    # Otherwise, return the accumulated solution
+                    return p_sol, failure_reason
+            
+            # --- Standard CG Steps ---
+            alpha = np.dot(r, r) / dBd
+            
+            p_next = p_sol + alpha * d
+            r_next = r - alpha * Bd
+            
+            # Check convergence (Relative Residual)
+            if np.linalg.norm(r_next) / norm_c < etak:
+                return p_next, failure_reason
+            
+            # Update search direction for next step
+            beta = np.dot(r_next, r_next) / np.dot(r, r)
+            d = r_next + beta * d
+            
+            # Update variables
+            r = r_next
+            p_sol = p_next
+            
+        failure_reason = "GC"
+        return p_sol, failure_reason
 
 
     def truncated_newton(self, f, gradf, hessf, x0):
@@ -147,15 +144,20 @@ class TruncatedNewtonMethod:
         xk_sequence = [xk.copy()]
         grad_xk = gradf(xk)
         grad_xk_norm = np.linalg.norm(grad_xk)
-        k = 0
         flag_convergence = False
+        failure_reason = "-"
         bcktrk = Backtracking(self.c1,self.rho,100)
+        flag = "x"
 
         for k in range(self.kmax): 
             
             if grad_xk_norm < self.tol:
                 flag_convergence = True
-                return xk, grad_xk_norm, flag_convergence, k, np.array(xk_sequence)
+                return xk, grad_xk_norm, flag_convergence, k, np.array(xk_sequence), "-"
+            
+            # SEE IF NEEDS TO BE DELETED
+            if not np.isfinite(grad_xk_norm):
+                return xk, grad_xk_norm, flag_convergence, k, np.array(xk_sequence), "NaN"
             
             eta_k = self.forcing_term(grad_xk_norm)
 
@@ -164,14 +166,15 @@ class TruncatedNewtonMethod:
             z0 = np.zeros_like(c)    
             
             # inner conjugate gradient method to solve linear system and find p_tn
-            p_tn = self.inner_CG(B, c, z0, eta_k)
+            p_tn, failure_CG = self.inner_CG(B, c, z0, eta_k)
 
             if np.dot(p_tn, grad_xk) >= 0:
                 p_tn = c
 
             #alpha = self.line_search(f, grad_xk, xk, p_tn, alpha=1, rho=self.rho, c1=self.c1)
             alpha = bcktrk.backtrack(p_tn,xk,f,1,grad_xk)
-            
+            if alpha == 0:
+                 return xk, grad_xk_norm, False, k, np.array(xk_sequence), "LS"
             xk = xk + alpha * p_tn   
             xk_sequence.append(xk.copy())
 
@@ -183,4 +186,8 @@ class TruncatedNewtonMethod:
         print("final alpha: ", alpha)
         print("final norm of the gradient: ",grad_xk_norm)
 
-        return xk, grad_xk_norm, flag_convergence, k, np.array(xk_sequence)
+        if failure_CG != "-":
+            failure_reason = failure_CG
+        else:
+            failure_reason = "MAX"
+            return xk, grad_xk_norm, flag_convergence, k, np.array(xk_sequence), failure_reason
