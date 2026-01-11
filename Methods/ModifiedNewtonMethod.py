@@ -76,7 +76,8 @@ class ModifiedNewtonMethod:
 
             if grad_norm < self.tol: #*max(1,np.linalg.norm(gradient)) #CHECK FOR OTHER STOPPING CRITERIONS
                 converge = True
-                return x, np.array(path), np.linalg.norm(gradient), converge, self.max_n, "-"
+                iters = len(path) - 1
+                return x, np.array(path), np.linalg.norm(gradient), converge, iters, "-"
             
             if hessian.diagonal().min() > 0:
                 tau = 0
