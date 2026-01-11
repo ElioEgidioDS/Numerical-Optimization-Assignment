@@ -14,29 +14,6 @@ class ModifiedNewtonMethod:
         self.bck_trk_c1 = bck_trk_C1
         self.bck_trk_rho = bck_trk_rho
 
-    # def line_search(self, f, gradfxk, xk, p, alpha=1, rho=0.5, c1=1e-4):
-    #     fxk = f(xk)
-    #     #grad_fxk = gradf(xk)
-    #     slope = np.dot(gradfxk, p) 
-
-    #     if slope >= 0: return 0
-
-    #     while alpha > 1e-12: 
-    #         try:
-                
-    #             x_next = xk + alpha * p
-    #             f_next = f(x_next)
-                
-    #             if f_next <= fxk + (c1 * alpha * slope):
-    #                 return alpha
-            
-    #         except (OverflowError, ValueError, RuntimeWarning):
-    #             pass
-            
-    #         alpha *= rho
-        
-    #     # alpha became too small
-    #     return 0.0
 
     def convert_to_banded(self, sparse_mat):
 
@@ -90,8 +67,6 @@ class ModifiedNewtonMethod:
                     B_k_banded = self.convert_to_banded(Bk)
                     R = cholesky_banded(B_k_banded, lower= True)
                 
-
-                    #p_mn = lu_fact.solve(-gradient)
                     
                     break
                 except LinAlgError:
