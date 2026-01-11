@@ -1,7 +1,7 @@
 import time
 import numpy as np
 import pandas as pd
-from Methods.NewtonMethod import NewtonMethod
+from Methods.ModifiedNewtonMethod import ModifiedNewtonMethod
 from Problems.Problem_fd import Problem_fd
 from Problems.Problem_52 import Problem_52
 import matplotlib.pyplot as plt
@@ -12,54 +12,71 @@ from Methods.Finite_Differences import FiniteDifferences
 from scipy import sparse
 import scipy.sparse.linalg
 
-def iterate_fd(x0, xRand,problem_main):
-    
-    k_values = [4, 8, 12]
-    modes = ["scalar","adaptive"]
+def iterate_fd(x0, xRand, problem_main, return_full=False):
+    import time
+    import numpy as np
+    import pandas as pd
+    from Methods.ModifiedNewtonMethod import ModifiedNewtonMethod
+    from Problems.Problem_fd import Problem_fd
+    from Methods.Finite_Differences import FiniteDifferences
 
-    modified_newt = NewtonMethod(1e-6, 1000, 0.5, 1e-4)
+    k_values = [4, 8, 12]
+    modes = ["scalar", "adaptive"]
+
+    # Attenzione: NewtonMethod(tol, max_n, rho, c1)
+    modified_newt = ModifiedNewtonMethod(1e-6, 1000, 0.5, 1e-4)
+
+    modified_newt = ModifiedNewtonMethod(1e-6, 1000, 0.5, 1e-4)
     truncated_newt = TruncatedNewtonMethod(1e-6, 1000, 500, 'sl')
     x_initial_fd = []
-    x_initial_fd_tr = []
+    x_initial_fd_tr = []   # lo lasciamo vuoto se TR è commentato
 
+    # -------------------------
+    # INITIAL POINTS (x0)
+    # -------------------------
     for starting_point in x0:
-        
-
         problem = type(problem_main)(starting_point.shape[0])
         fd_solver = FiniteDifferences(problem)
-        
 
         for mode in modes:
             for k in k_values:
+                # gradient callable coerente con la tua FiniteDifferences
+                grad_fun = fd_solver.make_grad_fun(
+                    k_step=k,
+                    step_mode=mode,
+                    scheme="centered",
+                    x_ref=None,        # adaptive usa x se None
+                    zero_floor=1.0
+                )
 
                 grad = lambda x: fd_solver.approximate_gradient(x, k, step_mode=mode, x_ref=x,zero_floor=1e-2)
                 hess = lambda x: fd_solver.approximate_hessian_pentadiag(x, grad, k, step_mode=mode, x_ref=x,zero_floor=1e-2)
 
-                problem_fd = Problem_fd(problem, grad, hess)
+                problem_fd = Problem_fd(problem, grad_fun, hess_fun)
 
                 start_time = time.time()
-                x, path, norm_gradient, converges, steps = modified_newt.minimize(
+                x, norm_gradient, converges, steps, path, failure_reason = modified_newt.modified_newton(
                     problem_fd, starting_point
                 )
                 end_time = time.time() - start_time
 
                 #TR
                 start_time_tr = time.time()
-                x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = truncated_newt.truncated_newton(problem_fd.function, problem_fd.gradient, problem_fd.hessian, starting_point)
+                x_tr, norm_gradient_tr, converges_tr,  steps_tr, path_tr, failure_reason_tr = truncated_newt.truncated_newton(problem_fd.function, problem_fd.gradient, problem_fd.hessian, starting_point)
                 end_time_tr = time.time() - start_time_tr
 
                 final_score_tr = problem.function(x_tr)
                 final_score = problem.function(x)
 
                 x_initial_fd.append({
-                    #"strategy": strategy,
-                    "n":starting_point.shape[0],
-                    "mode": mode,         
+                    "n": starting_point.shape[0],
+                    "mode": mode,
                     "k": k,
                     "norm_gradient": norm_gradient,
-                    "time": end_time,
+                    "time": elapsed,
                     "final_score": final_score,
                     "converges": converges,
+                    "failure_reason": failure_reason,
                     "iterations": steps,
                     #"path": path,
                 })
@@ -73,6 +90,7 @@ def iterate_fd(x0, xRand,problem_main):
                     "time": end_time_tr,
                     "final_score": final_score_tr,
                     "converges": converges_tr,
+                    "failure_reason": failure_reason_tr,
                     "iterations": steps_tr,
                     #"path": path_tr,
                 })
@@ -92,6 +110,7 @@ def iterate_fd(x0, xRand,problem_main):
             final_scores = []
             iterations = []
             converges_list = []
+            failure_reason_list = []
 
             # TR
             norm_grads_tr = []
@@ -99,6 +118,7 @@ def iterate_fd(x0, xRand,problem_main):
             final_scores_tr = []
             iterations_tr = []
             converges_list_tr = []
+            failure_reason_list_tr = []
             path_history_tr = []
 
         
@@ -110,11 +130,9 @@ def iterate_fd(x0, xRand,problem_main):
 
                 # NM
                 start_time = time.time()
-                x, path, norm_gradient, converges, steps = modified_newt.minimize(
+                x, norm_gradient, converges, steps, path, failure_reason = modified_newt.modified_newton(
                     problem_fd, starting_point
                 )
-                end_time = time.time() - start_time
-                final_score = problem.function(x)
 
                 path_history.append(path)
                 norm_grads.append(norm_gradient)
@@ -122,10 +140,11 @@ def iterate_fd(x0, xRand,problem_main):
                 final_scores.append(final_score)
                 iterations.append(steps)
                 converges_list.append(converges)
+                failure_reason_list.append(failure_reason)
 
                 # TR
                 '''start_time_tr = time.time()
-                x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = TR.truncated_newton(
+                x_tr, norm_gradient_tr, converges_tr,  steps_tr, path_tr, failure_reason_tr = TR.truncated_newton(
                     problem_fd.function, problem_fd.gradient, problem_fd.hessian, starting_point
                 )
                 end_time_tr = time.time() - start_time_tr
@@ -136,10 +155,10 @@ def iterate_fd(x0, xRand,problem_main):
                 final_scores_tr.append(final_score_tr)
                 iterations_tr.append(steps_tr)
                 converges_list_tr.append(converges_tr)
+                failure_reason_list_tr.append(failure_reason_tr)
                 path_history_tr.append(path_tr)'''
 
-        
-            print(f"Finished {mode} k={k}, Avg Iter: {np.mean(iterations)}")
+                final_score = problem.function(x)
 
             
             x_random_fd.append({
@@ -151,6 +170,7 @@ def iterate_fd(x0, xRand,problem_main):
                 "final_score": np.mean(final_scores),
                 "iterations": np.mean(iterations),
                 "converges": np.all(converges_list),
+                "failure_reason": ", ".join(failure_reason_list),
                 #"paths": path_history,   
             })
                         
@@ -163,6 +183,7 @@ def iterate_fd(x0, xRand,problem_main):
                 "final_score": np.mean(final_scores_tr),
                 "iterations": np.mean(iterations_tr),
                 "converges": np.all(converges_list_tr),
+                "failure_reason": ", ".join(failure_reason_list_tr),
                 #"paths" : path_history_tr
             })
 
@@ -170,10 +191,21 @@ def iterate_fd(x0, xRand,problem_main):
     x_initial_fd_tr_df = pd.DataFrame(x_initial_fd_tr)
     x_random_fd_df = pd.DataFrame(x_random_fd)
     x_random_fd_tr_df = pd.DataFrame(x_random_fd_tr)
-            
-    return x_initial_fd_df,x_initial_fd_tr_df, x_random_fd_df,x_random_fd_tr_df
 
-def iterate_tol(x0, xRand, problem_main):
+    raw = {
+        "x_initial_fd": x_initial_fd,
+        "x_random_fd": x_random_fd,
+        "x_initial_fd_tr": x_initial_fd_tr,
+        "x_random_fd_tr": x_random_fd_tr,
+    }
+
+    if return_full:
+        return x_initial_fd_df, x_initial_fd_tr_df, x_random_fd_df, x_random_fd_tr_df, raw
+
+    return x_initial_fd_df, x_initial_fd_tr_df, x_random_fd_df, x_random_fd_tr_df
+
+
+def iterate_tol(x0, xRand, problem_main, return_full=False):
     tolerances = [1e-4, 1e-6, 1e-8]
     all_results = {}
 
@@ -181,7 +213,7 @@ def iterate_tol(x0, xRand, problem_main):
 
         print(f"\n=== Running experiments with tol = {tol:.1e} ===")
 
-        modified_newt = NewtonMethod(tol, 1000, 0.5, 1e-4)
+        modified_newt = ModifiedNewtonMethod(tol, 1000, 0.5, 1e-4)
         truncated_newt = TruncatedNewtonMethod(tol, 1000, 1000, 'sl')
 
         x_initial_results = {}
@@ -190,11 +222,11 @@ def iterate_tol(x0, xRand, problem_main):
         x_random_results_tr = {}
 
         '''problem_64 = Problem_64(50, 10)
-        my_x, _, _, _, _ = modified_newt.minimize(problem_64, x0_50, mode="exact")
+        my_x, _, _, _, _ = modified_newt.modified_newton(problem_64, x0_50, mode="exact")
 
         # 2. Solve with SCIPY
         # (Assuming problem.function and problem.gradient are defined)
-        scipy_res = minimize(fun=problem_64.function, 
+        scipy_res = modified_newton(fun=problem_64.function, 
                             x0=x0_50, 
                             jac=problem_64.gradient, 
                             method='BFGS', 
@@ -214,14 +246,14 @@ def iterate_tol(x0, xRand, problem_main):
 
             #NM
             start_time = time.time()
-            x, path, norm_gradient, converges, steps = modified_newt.minimize(
+            x, norm_gradient, converges, steps, path, failure_reason = modified_newt.modified_newton(
                 problem, starting_point
             )
             end_time = time.time() - start_time
 
             #TR
             start_time_tr = time.time()
-            x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = truncated_newt.truncated_newton(problem.function, problem.gradient, problem.hessian, starting_point)
+            x_tr, norm_gradient_tr, converges_tr,  steps_tr, path_tr, failure_reason_tr = truncated_newt.truncated_newton(problem.function, problem.gradient, problem.hessian, starting_point)
             end_time_tr = time.time() - start_time_tr
 
             final_score_tr = problem.function(x_tr)
@@ -232,6 +264,7 @@ def iterate_tol(x0, xRand, problem_main):
                 "time": end_time,
                 "final_score": final_score,
                 "converges": converges,
+                "failure_reason": failure_reason,
                 "iterations": steps,
                 "path": path,
             }
@@ -241,6 +274,7 @@ def iterate_tol(x0, xRand, problem_main):
                 "time": end_time_tr,
                 "final_score": final_score_tr,
                 "converges": converges_tr,
+                "failure_reason": failure_reason_tr,
                 "iterations": steps_tr,
                 "path": path_tr,
             }
@@ -251,7 +285,7 @@ def iterate_tol(x0, xRand, problem_main):
             problem_64 = Problem_64(starting_point.shape[0], 10)
 
             start_time = time.time()
-            x, path, norm_gradient, converges, steps = modified_newt.minimize(
+            x, path, norm_gradient, converges, failure_reason, steps = modified_newt.modified_newton(
                 problem_64, starting_point, mode="exact"
             )
             end_time = time.time() - start_time
@@ -263,6 +297,7 @@ def iterate_tol(x0, xRand, problem_main):
                 "time": end_time,
                 "final_score": final_score,
                 "converges": converges,
+                "failure_reason": failure_reason,
                 "iterations": steps,
                 "path": path,
             }'''
@@ -280,6 +315,8 @@ def iterate_tol(x0, xRand, problem_main):
             final_scores = []
             iterations = []
             converges_list = []
+            failure_reason_list = []
+
 
             #TR
             norm_grads_tr = []
@@ -287,12 +324,14 @@ def iterate_tol(x0, xRand, problem_main):
             final_scores_tr = []
             iterations_tr = []
             converges_list_tr = []
+            failure_reason_list_tr = []
+
             path_history_tr = []
 
             for starting_point in starting_size:
 
                 start_time = time.time()
-                x, path, norm_gradient, converges, steps = modified_newt.minimize(
+                x, norm_gradient, converges, steps, path, failure_reason = modified_newt.modified_newton(
                     problem, starting_point
                 )
                 end_time = time.time() - start_time
@@ -305,11 +344,13 @@ def iterate_tol(x0, xRand, problem_main):
                 final_scores.append(final_score)
                 iterations.append(steps)
                 converges_list.append(converges)
+                failure_reason_list.append(failure_reason)
+
 
                 if tol == 1e-6:
 
                     start_time_tr = time.time()
-                    x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = truncated_newt.truncated_newton(problem.function, problem.gradient, problem.hessian, starting_point)
+                    x_tr, norm_gradient_tr, converges_tr,  steps_tr, path_tr, failure_reason_tr = truncated_newt.truncated_newton(problem.function, problem.gradient, problem.hessian, starting_point)
                     end_time_tr = time.time() - start_time_tr
 
                     final_score_tr = problem.function(x_tr)
@@ -319,6 +360,7 @@ def iterate_tol(x0, xRand, problem_main):
                     final_scores_tr.append(final_score_tr)
                     iterations_tr.append(steps_tr)
                     converges_list_tr.append(converges_tr)
+                    failure_reason_list_tr.append(failure_reason_tr)
                     path_history_tr.append(path_tr)
 
             print("\n--- DEBUGGING NORM LIST ---")
@@ -332,7 +374,9 @@ def iterate_tol(x0, xRand, problem_main):
                 "final_score": np.mean(final_scores),
                 "iterations": np.mean(iterations),
                 "converges": np.all(converges_list),
+                "failure_reason": ", ".join(failure_reason_list),
                 "paths": path_history,   # length = 5
+                "converges_list": converges_list
             }
             if tol == 1e-6:            
                 x_random_results_tr[n_dim] = {
@@ -341,6 +385,7 @@ def iterate_tol(x0, xRand, problem_main):
                     "final_score": np.mean(final_scores_tr),
                     "iterations": np.mean(iterations_tr),
                     "converges": np.all(converges_list_tr),
+                    "failure_reason": ", ".join(failure_reason_list_tr),
                     "pathd" : path_history_tr
                 }
 
@@ -371,6 +416,7 @@ def iterate_tol(x0, xRand, problem_main):
                 "time": metrics["time"],
                 "iterations": metrics["iterations"],
                 "converges": metrics["converges"],
+                "failure_reason" : metrics["failure_reason"],
                 "final_score": metrics["final_score"],
                 "norm_gradient": metrics["norm_gradient"]
             })
@@ -387,6 +433,7 @@ def iterate_tol(x0, xRand, problem_main):
                     "time": metrics["time"],
                     "iterations": metrics["iterations"],
                     "converges": metrics["converges"],
+                    "failure_reason" : metrics["failure_reason"],
                     "final_score": metrics["final_score"],
                     "norm_gradient": metrics["norm_gradient"],
                 })
@@ -403,6 +450,7 @@ def iterate_tol(x0, xRand, problem_main):
                 "time": metrics["time"],
                 "iterations": metrics["iterations"],
                 "converges": metrics["converges"],
+                "failure_reason" : metrics["failure_reason"],
                 "final_score": metrics["final_score"],
                 "norm_gradient": metrics["norm_gradient"]
             })
@@ -420,11 +468,15 @@ def iterate_tol(x0, xRand, problem_main):
                     "iterations": metrics["iterations"],
                     "converges": metrics["converges"],
                     "final_score": metrics["final_score"],
+                    "failure_reason" : metrics["failure_reason"],
                     "norm_gradient": metrics["norm_gradient"],
                 })
     df_tr_rand = pd.DataFrame(table_tr_rand)
     
-    return df_nm_init,df_tr_init,df_nm_rand,df_tr_rand
+    if return_full:
+        return df_nm_init, df_tr_init, df_nm_rand, df_tr_rand, all_results
+
+    return df_nm_init, df_tr_init, df_nm_rand, df_tr_rand
 
 def iterate_bcktrk(x0,xRand, problem_main):
     bck_trk_C1 = [1e-4, 1e-3, 1e-2, 0.1]
@@ -435,7 +487,7 @@ def iterate_bcktrk(x0,xRand, problem_main):
     for rho in bck_trk_rho:
         for c1 in bck_trk_C1:
 
-            modified_newt = NewtonMethod(1e-6, 1000, rho, c1)
+            modified_newt = ModifiedNewtonMethod(1e-6, 1000, rho, c1)
             truncated_newt = TruncatedNewtonMethod(1e-6, 1000, 500, 'sl', rho, c1)
             
 
@@ -445,14 +497,14 @@ def iterate_bcktrk(x0,xRand, problem_main):
                 problem = type(problem_main)(starting_point.shape[0]) 
                 
                 start_time = time.time()
-                x, path, norm_gradient, converges, steps = modified_newt.minimize(
+                x, norm_gradient, converges, steps, path, failure_reason = modified_newt.modified_newton(
                     problem, starting_point
                 )
                 end_time = time.time() - start_time
 
                 #TR
                 start_time_tr = time.time()
-                x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = truncated_newt.truncated_newton(problem.function, problem.gradient, problem.hessian, starting_point)
+                x_tr, norm_gradient_tr, converges_tr,  steps_tr, path_tr, failure_reason_tr = truncated_newt.truncated_newton(problem.function, problem.gradient, problem.hessian, starting_point)
                 end_time_tr = time.time() - start_time_tr
 
                 final_score_tr = problem.function(x_tr)
@@ -467,6 +519,7 @@ def iterate_bcktrk(x0,xRand, problem_main):
                     "time": end_time,
                     "final_score": final_score,
                     "converges": converges,
+                    "failure_reason": failure_reason,
                     "iterations": steps,
                     #"path": path,
                 })
@@ -480,6 +533,7 @@ def iterate_bcktrk(x0,xRand, problem_main):
                     "time": end_time_tr,
                     "final_score": final_score_tr,
                     "converges": converges_tr,
+                    "failure_reason": failure_reason_tr,
                     "iterations": steps_tr,
                     #"path": path_tr,
                 })
@@ -491,7 +545,7 @@ def iterate_bcktrk(x0,xRand, problem_main):
     x_random_tr_bck = []
     for rho in bck_trk_rho:
         for c1 in bck_trk_C1:
-            modified_newt = NewtonMethod(1e-6, 1000, rho, c1)
+            modified_newt = ModifiedNewtonMethod(1e-6, 1000, rho, c1)
             truncated_newt = TruncatedNewtonMethod(1e-6, 1000, 500, 'sl', rho, c1)
             # NM
             path_history = []
@@ -500,6 +554,8 @@ def iterate_bcktrk(x0,xRand, problem_main):
             final_scores = []
             iterations = []
             converges_list = []
+            failure_reason_list = []
+
 
             # TR
             norm_grads_tr = []
@@ -507,6 +563,7 @@ def iterate_bcktrk(x0,xRand, problem_main):
             final_scores_tr = []
             iterations_tr = []
             converges_list_tr = []
+            failure_reason_list_tr = []
             path_history_tr = []
 
         
@@ -515,7 +572,7 @@ def iterate_bcktrk(x0,xRand, problem_main):
 
                 # NM
                 start_time = time.time()
-                x, path, norm_gradient, converges, steps = modified_newt.minimize(
+                x, norm_gradient, converges, steps, path, failure_reason = modified_newt.modified_newton(
                     problem, starting_point
                 )
                 end_time = time.time() - start_time
@@ -527,10 +584,11 @@ def iterate_bcktrk(x0,xRand, problem_main):
                 final_scores.append(final_score)
                 iterations.append(steps)
                 converges_list.append(converges)
+                failure_reason_list.append(failure_reason)
 
                 # TR
                 start_time_tr = time.time()
-                x_tr, norm_gradient_tr, converges_tr, steps_tr, path_tr = truncated_newt.truncated_newton(
+                x_tr, norm_gradient_tr, converges_tr,  steps_tr, path_tr, failure_reason_tr = truncated_newt.truncated_newton(
                     problem.function, problem.gradient, problem.hessian, starting_point
                 )
                 end_time_tr = time.time() - start_time_tr
@@ -541,6 +599,7 @@ def iterate_bcktrk(x0,xRand, problem_main):
                 final_scores_tr.append(final_score_tr)
                 iterations_tr.append(steps_tr)
                 converges_list_tr.append(converges_tr)
+                failure_reason_list_tr.append(failure_reason_tr)
                 path_history_tr.append(path_tr)
 
         
@@ -556,6 +615,7 @@ def iterate_bcktrk(x0,xRand, problem_main):
                 "final_score": np.mean(final_scores),
                 "iterations": np.mean(iterations),
                 "converges": np.all(converges_list),
+                "failure_reason": ", ".join(failure_reason_list),
                 #"paths": path_history,   
             })
                         
@@ -568,6 +628,7 @@ def iterate_bcktrk(x0,xRand, problem_main):
                 "final_score": np.mean(final_scores_tr),
                 "iterations": np.mean(iterations_tr),
                 "converges": np.all(converges_list_tr),
+                "failure_reason": ", ".join(failure_reason_list_tr),
                 #"paths" : path_history_tr
             })
     x_initial_bck_df = pd.DataFrame(x_initial_bck)

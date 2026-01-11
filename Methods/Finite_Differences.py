@@ -1,9 +1,6 @@
 import numpy as np
 from scipy import sparse
-from typing import Callable, Optional
 from scipy import sparse
-
-from Problems.Problem_31 import Problem_31 as Problem31
 
 class FiniteDifferences:
     """
@@ -24,13 +21,7 @@ class FiniteDifferences:
 
     # step size utilities
     @staticmethod
-    def step_vector(
-        x: np.ndarray,
-        k: int,
-        mode: str,
-        x_ref: Optional[np.ndarray] = None,
-        zero_floor: float = 1.0
-    ):
+    def step_vector(x, k, mode, x_ref = None, zero_floor = 1.0):
         """
         builds the perturbation step vector h.
 
@@ -63,14 +54,8 @@ class FiniteDifferences:
 
     # tridiagonal jacobian
     def approximate_jacobian_tridiag_diagonals(
-        self,
-        x: np.ndarray,
-        k_step: int,
-        step_mode: str,
-        scheme: str = "centered",
-        x_ref: Optional[np.ndarray] = None,
-        zero_floor: float = 1.0
-    ):
+        self, x, k_step, step_mode, scheme = "centered", x_ref = None,
+        zero_floor = 1.0):
         """
         approximates the three diagonals of the tridiagonal jacobian J of f(x):
 
@@ -138,14 +123,8 @@ class FiniteDifferences:
 
     # gradient of F(x) = 0.5 ||f||^2: grad = J^T f  
     def approximate_gradient(
-        self,
-        x: np.ndarray,
-        k_step: int,
-        step_mode: str,
-        scheme: str = "centered",
-        x_ref: Optional[np.ndarray] = None,
-        zero_floor: float = 1.0
-    ) -> np.ndarray:
+        self, x, k_step, step_mode, scheme = "centered", x_ref = None, 
+        zero_floor = 1.0):
         """
         approximates grad F(x) = J(x)^T f(x) in O(n),
         using only the three diagonals of the tridiagonal jacobian.
@@ -167,15 +146,8 @@ class FiniteDifferences:
         return g
 
     # pentadiagonal hessian
-    def approximate_hessian_pentadiag(
-        self,
-        x: np.ndarray,
-        grad_fun: Callable[[np.ndarray], np.ndarray],
-        k_step: int,
-        step_mode: str,
-        x_ref: Optional[np.ndarray] = None,
-        zero_floor: float = 1.0
-    ):
+    def approximate_hessian_pentadiag(self, x, grad_fun, k_step, step_mode, x_ref = None,
+        zero_floor = 1.0):
         """
         approximates a pentadiagonal hessian by forward differences of the gradient:
 
@@ -244,63 +216,15 @@ class FiniteDifferences:
         return H
 
     # helper: build a consistent gradient callable for the chosen FD settings
-    def make_grad_fun(
-        self,
-        k_step: int,
-        step_mode: str,
-        scheme: str = "centered",
-        x_ref: Optional[np.ndarray] = None,
-        zero_floor: float = 1.0
-    ):
+    def make_grad_fun(self, k_step, step_mode, scheme="centered", x_ref=None, zero_floor=1.0):
         # closure used to pass a gradient function into approximate_hessian_pentadiag
-        return lambda y: self.approximate_gradient(
-            y, k_step=k_step, step_mode=step_mode, scheme=scheme, x_ref=x_ref, zero_floor=zero_floor
-        )
-
-if __name__ == "__main__":
-    #EXAMPLE OF USAGE
-
-    n = 100000
-    k = 8
-
-    problem = Problem31(n)
-    fd = FiniteDifferences(problem)
-
-    # Use the problem's own starting point
-    x = problem.x0.copy()
-
-    # Case A: exact gradient, FD Hessian (H ≈ FD(grad_exact))
-    g_exact = problem.gradient(x)
-    H_fd_from_exact_grad = fd.approximate_hessian_pentadiag(
-        x,
-        grad_fun=problem.gradient,
-        k_step=k,
-        step_mode="scalar",   # "scalar" or "adaptive"
-        x_ref=x,
-        zero_floor=1e-2
-    )
-
-    # Case B: all derivatives approximated (grad ≈ J_fd^T f, H ≈ FD(grad_fd))
-    grad_fd = fd.make_grad_fun(
-        k_step=k,
-        step_mode="adaptive",
-        scheme="centered",
-        x_ref=x,
-        zero_floor=1e-2
-    )
-
-    g_fd = grad_fd(x)
-    H_fd_from_fd_grad = fd.approximate_hessian_pentadiag(
-        x,
-        grad_fun=grad_fd,
-        k_step=k,
-        step_mode="adaptive",
-        x_ref=x,
-        zero_floor=1e-2
-    )
-
-    print("n =", n, "k =", k)
-    print("||g_exact|| =", np.linalg.norm(g_exact))
-    print("||g_fd||    =", np.linalg.norm(g_fd))
-    print("H_fd_from_exact_grad: shape =", H_fd_from_exact_grad.shape, "\nnumber of non-zero elements =", H_fd_from_exact_grad.nnz)
-    print("H_fd_from_fd_grad:    shape =", H_fd_from_fd_grad.shape, "\nnumber of non-zero elements =", H_fd_from_fd_grad.nnz)
+        def grad(y):
+            return self.approximate_gradient(
+                y,
+                k_step=k_step,
+                step_mode=step_mode,
+                scheme=scheme,
+                x_ref=x_ref,
+                zero_floor=zero_floor
+            )
+        return grad

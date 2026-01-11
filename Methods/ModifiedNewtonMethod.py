@@ -1,41 +1,42 @@
 import numpy as np
 from scipy.sparse.linalg import splu
 from scipy.sparse import eye
+#from Methods.Backtracking import Backtracking
 from Methods.Backtracking import Backtracking
 from scipy.linalg import cholesky_banded, cho_solve_banded, LinAlgError
 
 
 
-class NewtonMethod:
+class ModifiedNewtonMethod:
     def __init__(self, tol, max_n, bck_trk_rho, bck_trk_C1):
         self.tol = tol
         self.max_n = max_n
         self.bck_trk_c1 = bck_trk_C1
         self.bck_trk_rho = bck_trk_rho
 
-    def line_search(self, f, gradfxk, xk, p, alpha=1, rho=0.5, c1=1e-4):
-        fxk = f(xk)
-        #grad_fxk = gradf(xk)
-        slope = np.dot(gradfxk, p) 
+    # def line_search(self, f, gradfxk, xk, p, alpha=1, rho=0.5, c1=1e-4):
+    #     fxk = f(xk)
+    #     #grad_fxk = gradf(xk)
+    #     slope = np.dot(gradfxk, p) 
 
-        if slope >= 0: return 0
+    #     if slope >= 0: return 0
 
-        while alpha > 1e-12: 
-            try:
+    #     while alpha > 1e-12: 
+    #         try:
                 
-                x_next = xk + alpha * p
-                f_next = f(x_next)
+    #             x_next = xk + alpha * p
+    #             f_next = f(x_next)
                 
-                if f_next <= fxk + (c1 * alpha * slope):
-                    return alpha
+    #             if f_next <= fxk + (c1 * alpha * slope):
+    #                 return alpha
             
-            except (OverflowError, ValueError, RuntimeWarning):
-                pass
+    #         except (OverflowError, ValueError, RuntimeWarning):
+    #             pass
             
-            alpha *= rho
+    #         alpha *= rho
         
-        # alpha became too small
-        return 0.0
+    #     # alpha became too small
+    #     return 0.0
 
     def convert_to_banded(self, sparse_mat):
 
@@ -58,7 +59,7 @@ class NewtonMethod:
         return banded_format
 
 
-    def minimize(self, problem,x0):
+    def modified_newton(self, problem,x0):
         x = x0.copy()
         path = [x.copy()]
         B = 1e-3
@@ -66,14 +67,17 @@ class NewtonMethod:
         converge = False
         R = None
         bcktrk = Backtracking(self.bck_trk_c1,self.bck_trk_rho,100)
+        flag = "x"
             
         for i in range(self.max_n):
             gradient = problem.gradient(x)
             hessian = problem.hessian(x)
+            grad_norm = np.linalg.norm(gradient, ord=np.inf)
 
-            if np.linalg.norm(gradient, ord=np.inf) < self.tol: #*max(1,np.linalg.norm(gradient)) #CHECK FOR OTHER STOPPING CRITERIONS
+            if grad_norm < self.tol: #*max(1,np.linalg.norm(gradient)) #CHECK FOR OTHER STOPPING CRITERIONS
                 converge = True
-                return x, np.array(path), np.linalg.norm(gradient), converge, i
+                iters = len(path) - 1
+                return x, np.array(path), np.linalg.norm(gradient), converge, iters, "-"
             
             if hessian.diagonal().min() > 0:
                 tau = 0
@@ -102,13 +106,14 @@ class NewtonMethod:
             #alpha = self.line_search(problem.function, gradient, x, p_mn, alpha=1, rho=self.bck_trk_rho, c1=self.bck_trk_c1)
             alpha = bcktrk.backtrack(p_mn,x,problem.function,1,gradient)
             
-            #print(f"{k}:{np.linalg.norm(gradient)}")
+            if alpha == 0:
+                return x, np.array(path), np.linalg.norm(gradient), False, self.max_n, "LS"
             x = x + alpha * p_mn
             path.append(x.copy())
 
         print("NM DID NOT CONVERGE")
         print("final iter: ",i)
         print("final alpha: ", alpha)
-        print("final norm of the gradient: ",np.linalg.norm(gradient))
+        print("final norm of the gradient: ", grad_norm)
 
-        return x, np.array(path), np.linalg.norm(gradient), converge, self.max_n
+        return x, np.array(path), np.linalg.norm(gradient), converge, self.max_n, "MAX"
