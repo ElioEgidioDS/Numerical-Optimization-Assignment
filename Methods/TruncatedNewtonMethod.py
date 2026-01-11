@@ -16,29 +16,29 @@ class TruncatedNewtonMethod:
         self.c1 = c1
 
 
-    def line_search(self, f, grad_fxk, xk, p, alpha=1, rho=0.5, c1=1e-4):
-        fxk = f(xk)
-        #grad_fxk = gradf(xk)
-        slope = np.dot(grad_fxk, p) 
+    # def line_search(self, f, grad_fxk, xk, p, alpha=1, rho=0.5, c1=1e-4):
+    #     fxk = f(xk)
+    #     #grad_fxk = gradf(xk)
+    #     slope = np.dot(grad_fxk, p) 
 
-        if slope >= 0: return 0
+    #     if slope >= 0: return 0
 
-        while alpha > 1e-12: 
-            try:
+    #     while alpha > 1e-12: 
+    #         try:
                 
-                x_next = xk + alpha * p
-                f_next = f(x_next)
+    #             x_next = xk + alpha * p
+    #             f_next = f(x_next)
                 
-                if f_next <= fxk + (c1 * alpha * slope):
-                    return alpha
+    #             if f_next <= fxk + (c1 * alpha * slope):
+    #                 return alpha
             
-            except (OverflowError, ValueError, RuntimeWarning):
-                pass
+    #         except (OverflowError, ValueError, RuntimeWarning):
+    #             pass
             
-            alpha *= rho
+    #         alpha *= rho
         
-        # alpha became too small
-        return 0.0
+    #     # alpha became too small
+    #     return 0.0
     
 
     def forcing_term(self, gradient_norm):
@@ -51,23 +51,23 @@ class TruncatedNewtonMethod:
             
     
 
-    # computed product B_precond @ d
-    # L, U: result of factorization
-    def mat_vec_precond(self, B, d, L, U): 
-        # full product to be computed: B_preconditioned @ d 
-        # equivalent to L^{-1} @ B @ U^{-1} @ d
-        # divided into three sub operations
+    # # computed product B_precond @ d
+    # # L, U: result of factorization
+    # def mat_vec_precond(self, B, d, L, U): 
+    #     # full product to be computed: B_preconditioned @ d 
+    #     # equivalent to L^{-1} @ B @ U^{-1} @ d
+    #     # divided into three sub operations
 
-        # [U^{-1} @ d] found by solving linear system [U @ prod1 = d]
-        prod1 = spsolve_triangular(U, d, lower=False)
+    #     # [U^{-1} @ d] found by solving linear system [U @ prod1 = d]
+    #     prod1 = spsolve_triangular(U, d, lower=False)
         
-        # [B @ prod1] computed directly
-        prod2 = B @ prod1
+    #     # [B @ prod1] computed directly
+    #     prod2 = B @ prod1
 
-        # [L^{-1} @ prod2] found by solving linear system [L @ prod3 = prod2]
-        prod3 = spsolve_triangular(L, prod2, lower=True)
+    #     # [L^{-1} @ prod2] found by solving linear system [L @ prod3 = prod2]
+    #     prod3 = spsolve_triangular(L, prod2, lower=True)
         
-        return prod3
+    #     return prod3
 
 
 
@@ -173,7 +173,7 @@ class TruncatedNewtonMethod:
             #alpha = self.line_search(f, grad_xk, xk, p_tn, alpha=1, rho=self.rho, c1=self.c1)
             alpha = bcktrk.backtrack(p_tn,xk,f,1,grad_xk)
             if alpha == 0:
-                break 
+                 return xk, grad_xk_norm, False, k, np.array(xk_sequence), "LS"
             xk = xk + alpha * p_tn   
             xk_sequence.append(xk.copy())
 
@@ -188,4 +188,5 @@ class TruncatedNewtonMethod:
         if failure_CG != "-":
             failure_reason = failure_CG
         else:
-            return xk, grad_xk_norm, flag_convergence, k, np.array(xk_sequence), "MAX"
+            failure_reason = "MAX"
+            return xk, grad_xk_norm, flag_convergence, k, np.array(xk_sequence), failure_reason
