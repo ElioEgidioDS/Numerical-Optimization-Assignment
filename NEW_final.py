@@ -519,7 +519,7 @@ def main():
     from Problems.Problem_31 import Problem_31
 
     problems = [Problem_52, Problem_31]
-    n_list = [2, 1000]  # prova con n piccoli
+    n_list = [2, 10**3, 10**4, 10**5]  # prova con n piccoli
 
     out_final = os.path.join("csv", "final", "final_results.csv")
     out_paths = os.path.join("csv", "path", "paths_n2.csv")
