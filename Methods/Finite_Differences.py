@@ -4,23 +4,21 @@ from scipy import sparse
 
 class FiniteDifferences:
     """
-    Efficient finite differences for least-squares problems:
-
-        F(x) = 0.5 * || f(x) ||^2
-
-    requirements:
-        - problem.function_k(x) must return the residual vector f(x), shape (n,)
-
-    structure exploited:
+    Efficient finite differences  implementation for least-squares problems:
+    F(x) = 0.5 * || f(x) ||^2
+    
+    - structure exploited:
         - jacobian J(x) of f(x) is assumed tridiagonal
-        - hessian of F is then typically pentadiagonal, e.g., J^T J (+ corrections)
+        - hessian of F is then pentadiagonal: J^T J (+ corrections)
+
+    - requirements:
+        - problem.function_k(x) must return the residual vector f(x), shape (n,)
     """
 
     def __init__(self, problem_instance):
         self.problem = problem_instance
 
-    # step size utilities
-    @staticmethod
+    
     def step_vector(x, k, mode, x_ref = None, zero_floor = 1.0):
         """
         builds the perturbation step vector h.
@@ -43,7 +41,7 @@ class FiniteDifferences:
                 x_ref = x
             h = eps * np.abs(x_ref).astype(float)
 
-            #optional safety floor to avoid zero steps (put it for numerical stability)
+            #optional safety floor to avoid zero steps (helps for numerical stability)
             if zero_floor > 0.0:
                 floor = eps * float(zero_floor)
                 h = np.maximum(h, floor)
@@ -59,9 +57,9 @@ class FiniteDifferences:
         """
         approximates the three diagonals of the tridiagonal jacobian J of f(x):
 
-            - d_lower[j] = J_{j+1, j}   for j = 0..n-2  (offset -1)
+            - d_lower[j] = J_{j+1, j}   for j = 0,...,n-2  (offset -1)
             - d_main[i]  = J_{i, i}
-            - d_upper[i] = J_{i, i+1}   for i = 0..n-2  (offset +1)
+            - d_upper[i] = J_{i, i+1}   for i = 0,...,n-2  (offset +1)
         """
         n = x.size
         h = self.step_vector(x, k=k_step, mode=step_mode, x_ref=x_ref, zero_floor=zero_floor)
@@ -112,19 +110,15 @@ class FiniteDifferences:
 
         return d_lower, d_main, d_upper
 
-    def approximate_jacobian_tridiag(
-        self, x, k_step, step_mode, scheme="centered", x_ref=None, zero_floor=0.0, fmt="csr"
-    ):
+    def approximate_jacobian_tridiag(self, x, k_step, step_mode, scheme="centered", x_ref=None, zero_floor=0.0, fmt="csr"):
         d_lower, d_main, d_upper = self.approximate_jacobian_tridiag_diagonals(
             x, k_step, step_mode, scheme, x_ref, zero_floor
         )
         return sparse.diags([d_lower, d_main, d_upper], offsets=[-1, 0, 1], shape=(x.size, x.size), format=fmt)
 
 
-    # gradient of F(x) = 0.5 ||f||^2: grad = J^T f  
-    def approximate_gradient(
-        self, x, k_step, step_mode, scheme = "centered", x_ref = None, 
-        zero_floor = 1.0):
+
+    def approximate_gradient(self, x, k_step, step_mode, scheme = "centered", x_ref = None, zero_floor = 1.0):
         """
         approximates grad F(x) = J(x)^T f(x) in O(n),
         using only the three diagonals of the tridiagonal jacobian.
@@ -145,7 +139,7 @@ class FiniteDifferences:
 
         return g
 
-    # pentadiagonal hessian
+
     def approximate_hessian_pentadiag(self, x, grad_fun, k_step, step_mode, x_ref = None,
         zero_floor = 1.0):
         """
@@ -217,7 +211,6 @@ class FiniteDifferences:
 
     # helper: build a consistent gradient callable for the chosen FD settings
     def make_grad_fun(self, k_step, step_mode, scheme="centered", x_ref=None, zero_floor=1.0):
-        # closure used to pass a gradient function into approximate_hessian_pentadiag
         def grad(y):
             return self.approximate_gradient(
                 y,
