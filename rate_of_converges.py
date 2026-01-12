@@ -1,12 +1,9 @@
-# rate_of_converges.py
-
 import re
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-# headless backend before importing pyplot
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -14,26 +11,24 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
 
-# ----------------------------
-# config
-# ----------------------------
+
 DEFAULT_CSV_PATH = Path("csv") / "final" / "final_results.csv"
 DEFAULT_OUT_ROOT = Path("figures") / "convergence_rates"
 
-# outlier handling: values outside [MIN_Q, MAX_Q] are dropped (not plotted, not used in bar means)
+# outlier handling
 MIN_Q = 0.0
 MAX_Q = 10.0
 
-# consistent method colors across all plots
+
 METHOD_COLORS = {
     "nm": "#1f77b4",   # blue
     "tr": "#7f7f7f",   # gray
 }
 
-# reproducible jitter
+
 RNG = np.random.default_rng(12345)
 
-# style / readability for report
+
 TITLE_FONTSIZE = 20
 SUBTITLE_FONTSIZE = 17
 LABEL_FONTSIZE = 16
@@ -43,9 +38,6 @@ LEGEND_FONTSIZE = 14
 FIG_DPI = 260
 
 
-# ----------------------------
-# utils
-# ----------------------------
 def slugify(s):
     s = str(s).strip().lower()
     s = re.sub(r"\s+", "_", s)
@@ -82,7 +74,6 @@ def method_color(m):
 
 
 def add_reference_lines(ax):
-    # red dashed reference lines for q=1 and q=2
     ax.axhline(1.0, color="red", linestyle="--", linewidth=1.4, alpha=0.9, zorder=1)
     ax.axhline(2.0, color="red", linestyle="--", linewidth=1.4, alpha=0.9, zorder=1)
 
@@ -93,10 +84,6 @@ def set_axes_style(ax):
 
 
 def make_legend_handles():
-    # legend is kept simple and readable:
-    #   - xbar marker (X)
-    #   - random starts marker (o)
-    #   - method bars (nm, tr)
     handles = [
         Line2D(
             [0], [0],
@@ -142,11 +129,8 @@ def compute_ylim_from_values(values):
     return (0.0, ymax)
 
 
-# ----------------------------
-# plotting
-# ----------------------------
+
 def plot_exact_case(df, title, outpath_png):
-    # df must already be filtered to a single (problem, n, case="Exact")
     if df.empty:
         return
 
@@ -164,7 +148,7 @@ def plot_exact_case(df, title, outpath_png):
         vals = df.loc[df["Method"] == m, "ConvergenceRate"].astype(float).to_numpy()
         means.append(np.nanmean(vals) if vals.size else np.nan)
 
-    # bars: consistent method colors
+
     bar_colors = [method_color(m) for m in methods]
     ax.bar(
         x,
@@ -177,7 +161,7 @@ def plot_exact_case(df, title, outpath_png):
         zorder=2,
     )
 
-    # points: same color as the bar (method color)
+    # points
     for i, m in enumerate(methods):
         d_m = df[df["Method"] == m].copy()
         if d_m.empty:
@@ -225,7 +209,7 @@ def plot_exact_case(df, title, outpath_png):
     y0, y1 = compute_ylim_from_values(df["ConvergenceRate"].astype(float).to_numpy())
     ax.set_ylim(bottom=y0, top=y1)
 
-    # clean, consistent legend
+
     handles = make_legend_handles()
     ax.legend(handles=handles, loc="upper right", framealpha=0.95, fontsize=LEGEND_FONTSIZE)
 
@@ -236,7 +220,7 @@ def plot_exact_case(df, title, outpath_png):
 
 
 def plot_fd_case(df, title, outpath_png):
-    # df must already be filtered to a single (problem, n, case in {"Mixed FD","Full FD",...})
+
     if df.empty:
         return
 
@@ -298,7 +282,7 @@ def plot_fd_case(df, title, outpath_png):
                 zorder=2,
             )
 
-            # points: same color as bar (method color)
+            # points
             for i_k, kv in enumerate(k_vals):
                 d_km = d_h[(d_h["Method"] == m) & (d_h["k_num"] == kv)].copy()
                 if d_km.empty:
@@ -338,7 +322,6 @@ def plot_fd_case(df, title, outpath_png):
         add_reference_lines(ax)
         set_axes_style(ax)
 
-        # subplot title: "h = ..."
         hm_clean = str(hm).strip()
         ax.set_title(f"h = {hm_clean}" if hm_clean else "h", fontsize=SUBTITLE_FONTSIZE, pad=10)
 
@@ -349,10 +332,8 @@ def plot_fd_case(df, title, outpath_png):
 
     axes[0].set_ylabel("convergence rate q", fontsize=LABEL_FONTSIZE)
 
-    # super title (with 'Experimental' capitalized)
     fig.suptitle(title, fontsize=TITLE_FONTSIZE, y=1.02)
 
-    # single legend for the whole figure (bigger, report-friendly)
     handles = make_legend_handles()
     fig.legend(
         handles=handles,
@@ -368,9 +349,6 @@ def plot_fd_case(df, title, outpath_png):
     plt.close(fig)
 
 
-# ----------------------------
-# main
-# ----------------------------
 def main(csv_path=DEFAULT_CSV_PATH, out_root=DEFAULT_OUT_ROOT):
     if not csv_path.exists():
         print(f"[rate_of_converges.py] csv not found: {csv_path}")
@@ -386,16 +364,15 @@ def main(csv_path=DEFAULT_CSV_PATH, out_root=DEFAULT_OUT_ROOT):
 
     df = df.copy()
 
-    # clean strings
     for c in ["Problem", "Method", "Case", "h_mode", "start_type", "point_id"]:
         if c in df.columns:
             df[c] = df[c].astype(str).str.strip()
 
-    # keep only converged sequences
+    # only converged sequences are kept
     df["Success"] = df["Success"].apply(to_bool_success)
     df = df[df["Success"]]
 
-    # numeric conversions
+
     df["ConvergenceRate"] = numeric_series(df["ConvergenceRate"])
     df["n"] = pd.to_numeric(df["n"], errors="coerce")
 
@@ -405,7 +382,7 @@ def main(csv_path=DEFAULT_CSV_PATH, out_root=DEFAULT_OUT_ROOT):
     # drop non-finite q
     df = df[np.isfinite(df["ConvergenceRate"].to_numpy())]
 
-    # drop outliers (also from bar means)
+    # drop outliers
     before = len(df)
     df = df[(df["ConvergenceRate"] >= MIN_Q) & (df["ConvergenceRate"] <= MAX_Q)]
     removed = before - len(df)
@@ -437,8 +414,6 @@ def main(csv_path=DEFAULT_CSV_PATH, out_root=DEFAULT_OUT_ROOT):
                 case_slug = slugify(case)
                 out_png = prob_dir / f"n_{n}_{case_slug}.png"
 
-                # title requirements:
-                # - 'Experimental' capitalized
                 title = f"{prob} | n={n} | {case} | Experimental convergence rate q"
 
                 if case.strip().lower() == "exact":
@@ -452,4 +427,4 @@ def main(csv_path=DEFAULT_CSV_PATH, out_root=DEFAULT_OUT_ROOT):
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()

@@ -3,14 +3,14 @@ import numpy as np
 import os
 from scipy.stats import gmean
 
-# ================= CONFIGURATION =================
+
 CSV_FILE = "csv/final/final_results.csv"
 OUTPUT_FILE = "all_results_sequenced.tex"
 
-# Mappings
+
 PROBLEM_MAP = {'p31': 'Problem 31', 'p52': 'Problem 52'}
 METHOD_MAP = {'nm': 'Modified Newton', 'tr': 'Truncated Newton'}
-METHOD_SHORT_MAP = {'nm': 'MN', 'tr': 'TN'} # Short names for summary tables
+METHOD_SHORT_MAP = {'nm': 'MN', 'tr': 'TN'}
 CASE_MAP = {'Exact': 'Exact derivatives', 'Mixed FD': 'Mixed FD', 'Full FD': 'Full FD'}
 
 PROBLEMS = ['p31', 'p52']
@@ -18,7 +18,6 @@ DIMENSIONS = [2, 1000, 10000, 100000]
 METHODS = ['nm', 'tr']
 CASES_ORDER = ['Exact', 'Mixed FD', 'Full FD']
 
-# ================= HELPER FUNCTIONS =================
 
 def load_data(csv_path):
     if not os.path.exists(csv_path):
@@ -31,7 +30,7 @@ def load_data(csv_path):
         df['MaxIterations'] = 1000
     df['MaxIterations'] = df['MaxIterations'].fillna(1000).astype(int)
 
-    # Normalize point names for LaTeX
+    # latex normalization
     df['point_id'] = df['point_id'].replace({
         'xbar': r'$\bar{x}$', 
         'rand1': '$x_1$', 'rand2': '$x_2$', 
@@ -40,7 +39,7 @@ def load_data(csv_path):
     return df
 
 def calculate_averages(df_subset):
-    """Calculates averages for the detailed longtables."""
+    #calculates averages for the detailed tables
     success_df = df_subset[df_subset['Success'] == True]
     if success_df.empty:
         return {
@@ -64,19 +63,18 @@ def calculate_averages(df_subset):
     }
 
 def generate_table_string(df, problem_key, method_key, n, case_key):
-    """Generates the detailed longtable LaTeX string."""
-    # Map keys
+
     prob_disp = PROBLEM_MAP.get(problem_key, problem_key)
     meth_disp = METHOD_MAP.get(method_key, method_key)
     case_disp = CASE_MAP.get(case_key, case_key)
 
-    # 1. Filter Data
+    
     mask = (df['Problem'] == problem_key) & (df['Method'] == method_key) & (df['n'] == n) & (df['Case'] == case_key)
     df_data = df[mask].copy()
     
     is_fd = (case_key != "Exact")
     
-    # 2. Formatter Helpers
+    # formatting
     def fmt_sci(val): return f"{val:.2e}" if not pd.isna(val) else "-"
     def fmt_float(val): return f"{val:.2f}" if not pd.isna(val) else "-"
     def fmt_iter(val, max_val): 
@@ -86,7 +84,7 @@ def generate_table_string(df, problem_key, method_key, n, case_key):
         if pd.isna(val): return "-"
         return f"{val:.2f}s"
 
-    # Define Columns and Headers
+    # columns and headers definitions
     if is_fd:
         col_def = "|l|l|c|c|c|c|c|c|c|"
         header_row = r"\textbf{starting point} & \textbf{pert. mode} & \textbf{k} & \textbf{grad. norm} & \textbf{iters / max} & \textbf{success} & \textbf{flag} & \textbf{conv. rate} & \textbf{time}"
@@ -96,7 +94,7 @@ def generate_table_string(df, problem_key, method_key, n, case_key):
         header_row = r"\textbf{starting point} & \textbf{grad. norm} & \textbf{iters / max} & \textbf{success} & \textbf{flag} & \textbf{conv. rate} & \textbf{time}"
         num_cols = 7
 
-    # 3. Generate Content Rows
+    
     latex_rows = []
     
     if df_data.empty:
@@ -120,7 +118,7 @@ def generate_table_string(df, problem_key, method_key, n, case_key):
                     group_mode['sort_order'] = group_mode['start_type'].apply(lambda x: 0 if x == 'initial' else 1)
                     group_mode = group_mode.sort_values(by=['sort_order', 'point_id'])
                     
-                    # Single Rows
+                    
                     for _, row in group_mode.iterrows():
                         succ = "yes" if row['Success'] else "no"
                         latex_rows.append(
@@ -131,7 +129,7 @@ def generate_table_string(df, problem_key, method_key, n, case_key):
                         )
                         latex_rows.append("\\hline") 
                     
-                    # Average Row
+                    # average Row
                     randoms = group_mode[group_mode['start_type'] == 'random']
                     if not randoms.empty:
                         avgs = calculate_averages(randoms)
@@ -187,10 +185,10 @@ def generate_table_string(df, problem_key, method_key, n, case_key):
 """
     return latex_code
 
-# ================= SUMMARY TABLES GENERATION =================
+
 
 def generate_summary_tables(df):
-    """Generates the 4 specific summary tables for analysis."""
+    #generates the 4 specific summary tables for analysis
     
     summary_latex = []
     summary_latex.append("\n\\clearpage")
@@ -237,7 +235,7 @@ def generate_summary_tables(df):
               r"\textbf{Method} & \textbf{Derivative Mode} & \textbf{Avg Iters} & \textbf{Avg Time (s)} & \textbf{Success} \\ \hline"
     
     rows2 = []
-    # Logic: For Full FD, we specifically look at k=12 as the "failure" case or high noise case
+    # for Full FD, we specifically look at k=12 as the "failure" case or high noise case
     target_modes = [('Exact', None), ('Mixed FD', None), ('Full FD', 12)]
     
     for meth in ['nm', 'tr']:
@@ -249,16 +247,14 @@ def generate_summary_tables(df):
             
             sub = df[mask]
             
-            # Special handling if data is missing or fully failed (0 success)
+            # special handling if data is missing or fully failed (0 success)
             if sub.empty:
                  row_str = f"{m_disp} & {case} (k={k_val}) & - & - & No Data \\\\"
             else:
                 avgs = calculate_averages(sub)
-                # If calculate_averages returned NaNs for Iters because of 0 success:
                 iters = f"{avgs['Iterations']:.0f}" if not pd.isna(avgs['Iterations']) else "-"
                 time = f"{avgs['TimeSeconds']:.2f}" if not pd.isna(avgs['TimeSeconds']) else "-"
                 
-                # Cleanup display for Mixed/Full
                 case_print = case
                 if k_val: case_print += f" (k={k_val})"
                 
@@ -286,17 +282,17 @@ def generate_summary_tables(df):
     for meth in ['nm', 'tr']:
         m_disp = METHOD_SHORT_MAP[meth]
         
-        # Get n=2 data
+        # n=2 data
         mask2 = (df['Problem'] == 'p31') & (df['n'] == 2) & (df['Method'] == meth) & (df['Case'] == 'Exact')
         sub2 = df[mask2]
         avg2 = calculate_averages(sub2)
         
-        # Get n=1000 data
+        # n=1000 data
         mask1k = (df['Problem'] == 'p31') & (df['n'] == 1000) & (df['Method'] == meth) & (df['Case'] == 'Exact')
         sub1k = df[mask1k]
         avg1k = calculate_averages(sub1k)
         
-        # Rows
+
         if not sub2.empty:
             rows3.append(f"{m_disp} & 2 & {avg2['Iterations']:.0f} & {avg2['TimeSeconds']:.3f} & - \\\\")
             rows3.append(r"\hline")
@@ -324,7 +320,6 @@ def generate_summary_tables(df):
               r"\textbf{Exp (k)} & \textbf{Step Size ($h$)} & \textbf{Avg Iters} & \textbf{Avg Time (s)} & \textbf{Success Rate} \\ \hline"
     
     rows4 = []
-    # Filter for MN, P31, n=1000, Full FD
     mask_stab = (df['Problem'] == 'p31') & (df['n'] == 1000) & (df['Method'] == 'nm') & (df['Case'] == 'Full FD')
     sub_stab = df[mask_stab]
     
@@ -345,7 +340,7 @@ def generate_summary_tables(df):
 
     return "\n".join(summary_latex)
 
-# ================= MAIN LOOP =================
+
 
 if __name__ == "__main__":
     df = load_data(CSV_FILE)
@@ -358,7 +353,7 @@ if __name__ == "__main__":
         f.write("% Includes Detailed Longtables and Executive Summary\n")
         f.write("% =========================================\n\n")
         
-        # 1. Generate Detailed Results
+        # detailed results
         for p in PROBLEMS:
             f.write(f"\n\\section{{Results for {PROBLEM_MAP[p]}}}\n")
             
@@ -369,12 +364,11 @@ if __name__ == "__main__":
                     f.write(f"\n\\subsubsection{{{METHOD_MAP[m]}}}\n")
                     
                     for case in CASES_ORDER:
-                        # Generate LONGTABLE string
                         table_tex = generate_table_string(df, p, m, n, case)
                         f.write(table_tex)
                         f.write("\n")
         
-        # 2. Generate Summary Tables
+        # summary tables
         summary_section = generate_summary_tables(df)
         f.write(summary_section)
 

@@ -2,15 +2,11 @@ import time
 import numpy as np
 import pandas as pd
 from Methods.ModifiedNewtonMethod import ModifiedNewtonMethod
-from Problems.Problem_fd import Problem_fd
 from Problems.Problem_52 import Problem_52
 import matplotlib.pyplot as plt
-from matplotlib.widgets import Slider
 from Methods.TruncatedNewtonMethod import TruncatedNewtonMethod
-from scipy.optimize import minimize
-from Methods.Finite_Differences import FiniteDifferences
-from scipy import sparse
-import scipy.sparse.linalg
+
+'''Python script to determine best tolerance and backtracking values, imitating a grid search algorithm'''
 
 def iterate_fd(x0, xRand, problem_main, return_full=False):
     import time
@@ -23,13 +19,13 @@ def iterate_fd(x0, xRand, problem_main, return_full=False):
     k_values = [4, 8, 12]
     modes = ["scalar", "adaptive"]
 
-    # Attenzione: NewtonMethod(tol, max_n, rho, c1)
+
     modified_newt = ModifiedNewtonMethod(1e-6, 1000, 0.5, 1e-4)
 
     modified_newt = ModifiedNewtonMethod(1e-6, 1000, 0.5, 1e-4)
     truncated_newt = TruncatedNewtonMethod(1e-6, 1000, 500, 'sl')
     x_initial_fd = []
-    x_initial_fd_tr = []   # lo lasciamo vuoto se TR è commentato
+    x_initial_fd_tr = []  
 
     # -------------------------
     # INITIAL POINTS (x0)
@@ -40,19 +36,18 @@ def iterate_fd(x0, xRand, problem_main, return_full=False):
 
         for mode in modes:
             for k in k_values:
-                # gradient callable coerente con la tua FiniteDifferences
                 grad_fun = fd_solver.make_grad_fun(
                     k_step=k,
                     step_mode=mode,
                     scheme="centered",
-                    x_ref=None,        # adaptive usa x se None
+                    x_ref=None,       
                     zero_floor=1.0
                 )
 
                 grad = lambda x: fd_solver.approximate_gradient(x, k, step_mode=mode, x_ref=x,zero_floor=1e-2)
                 hess = lambda x: fd_solver.approximate_hessian_pentadiag(x, grad, k, step_mode=mode, x_ref=x,zero_floor=1e-2)
 
-                problem_fd = Problem_fd(problem, grad_fun, hess_fun)
+                problem_fd = Problem_fd(problem, grad_fun, hess)
 
                 start_time = time.time()
                 x, norm_gradient, converges, steps, path, failure_reason = modified_newt.modified_newton(
@@ -73,7 +68,7 @@ def iterate_fd(x0, xRand, problem_main, return_full=False):
                     "mode": mode,
                     "k": k,
                     "norm_gradient": norm_gradient,
-                    "time": elapsed,
+                    "time": end_time,
                     "final_score": final_score,
                     "converges": converges,
                     "failure_reason": failure_reason,
@@ -220,24 +215,7 @@ def iterate_tol(x0, xRand, problem_main, return_full=False):
         x_initial_results_tr = {}
         x_random_results = {}
         x_random_results_tr = {}
-
-        '''problem_64 = Problem_64(50, 10)
-        my_x, _, _, _, _ = modified_newt.modified_newton(problem_64, x0_50, mode="exact")
-
-        # 2. Solve with SCIPY
-        # (Assuming problem.function and problem.gradient are defined)
-        scipy_res = modified_newton(fun=problem_64.function, 
-                            x0=x0_50, 
-                            jac=problem_64.gradient, 
-                            method='BFGS', 
-                            tol=tol)
-
-        # 3. Compare
-        diff = np.linalg.norm(my_x - scipy_res.x)
-        print(f"Difference between My Newton and Scipy w tol {tol}: {diff:.2e}")'''
-
-
-        
+       
         print("--- using exact derivatives ---")
 
         for starting_point in x0:
@@ -279,7 +257,7 @@ def iterate_tol(x0, xRand, problem_main, return_full=False):
                 "path": path_tr,
             }
 
-        # (Optional)
+      
         '''for starting_point in x_ground:
 
             problem_64 = Problem_64(starting_point.shape[0], 10)
@@ -392,7 +370,7 @@ def iterate_tol(x0, xRand, problem_main, return_full=False):
             print(f"n = {n_dim}, stored paths = {len(path_history)}")
 
         
-        # Save results for current tol  
+        # save results for current tol  
         all_results[tol] = {
             "x_initial": x_initial_results,
             "x_initial_tr": x_initial_results_tr,

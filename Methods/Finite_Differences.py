@@ -21,7 +21,7 @@ class FiniteDifferences:
     
     def step_vector(x, k, mode, x_ref = None, zero_floor = 1.0):
         """
-        builds the perturbation step vector h.
+        builds h
 
         mode:
             - "scalar":      h = 10^{-k}

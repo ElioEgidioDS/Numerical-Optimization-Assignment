@@ -9,7 +9,7 @@ class Problem_31:
         self.x0 = -1 * np.ones(n)
 
 
-# Returns vector f_k(x) 
+# returns vector f_k(x) 
     def function_k(self, x):
        
         n = self.n
@@ -31,14 +31,14 @@ class Problem_31:
         return f
 
 
-# Returns function F(x) = 0.5 * ||f(x)||^2
+# returns function F(x) = 0.5 * ||f(x)||^2
     def function(self, x):
 
         f = self.function_k(x)
         return 0.5 * np.dot(f, f)
 
 
-# Returns exact gradient
+# returns exact gradient
     def gradient(self, x):
 
         n = self.n
@@ -60,7 +60,7 @@ class Problem_31:
         return grad
 
 
-# Returns exact sparse Hessian: J.T @ J + Second order terms
+# returns exact sparse Hessian: J.T @ J + Second order terms
     def hessian(self, x):
 
         n = self.n

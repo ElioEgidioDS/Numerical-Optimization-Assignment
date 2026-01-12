@@ -79,16 +79,16 @@ class TruncatedNewtonMethod:
             # curvature check (d^T B d) ---
             dBd = np.dot(d, Bd)
             
-            # CRITICAL:
+
             # If we encounter negative curvature (indefinite Hessian),
             # we must stop and return the best direction found so far.
             if dBd <= 1e-12:
                 if j == 0:
-                    # If it happens at the very first step, 
+                    # if it happens at the very first step, 
                     # the Hessian is bad immediately. Return steepest descent (c).
                     return c, failure_reason
                 else:
-                    # Otherwise, return the accumulated solution
+                    # otherwise, return the accumulated solution
                     return p_sol, failure_reason
             
             # standard CG

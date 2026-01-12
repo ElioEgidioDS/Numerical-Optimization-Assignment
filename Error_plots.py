@@ -4,10 +4,6 @@ import numpy as np
 import os
 
 def generate_error_plots(csv_file_path, output_dir="./figures/error_plots"):
-    """
-    reads the error CSV and generates one plot per configuration
-    each plot compares different starting points
-    """
 
     df = pd.read_csv(csv_file_path)
 
@@ -18,7 +14,7 @@ def generate_error_plots(csv_file_path, output_dir="./figures/error_plots"):
     
     os.makedirs(output_dir, exist_ok=True)
 
-    # define Grouping Columns cause we want one separate graph for every combination of these:
+    # define grouping columns cause we want one separate graph for every combination of these:
     group_cols = ['Problem', 'Size', 'Method', 'Case', 'h_mode', 'k_fd']
     grouped = df.groupby(group_cols)
 
@@ -26,7 +22,7 @@ def generate_error_plots(csv_file_path, output_dir="./figures/error_plots"):
 
    
     for name, group_df in grouped:
-        # Unpack the tuple 'name' into variables
+        # unpacks name tuple into variables
         prob, size, method, case, h_mode, k_val = name
 
        
@@ -49,7 +45,7 @@ def generate_error_plots(csv_file_path, output_dir="./figures/error_plots"):
                 alpha = 1.0
             else:
                 label = f"Random {run_id}"
-                color = None # Let matplotlib pick colors
+                color = None 
                 linewidth = 1.2
                 linestyle = '--'
                 alpha = 0.7
