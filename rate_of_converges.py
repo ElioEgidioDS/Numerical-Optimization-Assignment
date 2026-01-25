@@ -5,11 +5,14 @@ import numpy as np
 import pandas as pd
 
 import matplotlib
+# needed to save plots
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
+# handles plotting of experimental convergence rates by reading the csv
+# filter out runs that fail to get significant plots
 
 
 DEFAULT_CSV_PATH = Path("csv") / "final" / "final_results.csv"
@@ -19,16 +22,16 @@ DEFAULT_OUT_ROOT = Path("figures") / "convergence_rates"
 MIN_Q = 0.0
 MAX_Q = 10.0
 
-
+# color definition
 METHOD_COLORS = {
     "nm": "#1f77b4",   # blue
     "tr": "#7f7f7f",   # gray
 }
 
 
-RNG = np.random.default_rng(12345)
+RNG = np.random.default_rng(352283)
 
-
+# plot style
 TITLE_FONTSIZE = 20
 SUBTITLE_FONTSIZE = 17
 LABEL_FONTSIZE = 16
@@ -37,23 +40,19 @@ LEGEND_FONTSIZE = 14
 
 FIG_DPI = 260
 
-
-def slugify(s):
+# builds name
+def filename(s):
     s = str(s).strip().lower()
     s = re.sub(r"\s+", "_", s)
     s = re.sub(r"[^a-z0-9_\-]+", "", s)
     s = re.sub(r"_+", "_", s)
     return s
 
-
+# helpers
 def ensure_dir(p):
     p.mkdir(parents=True, exist_ok=True)
-
-
 def to_bool_success(x):
     return str(x).strip().lower() == "true"
-
-
 def numeric_series(s):
     return pd.to_numeric(s, errors="coerce")
 
@@ -63,26 +62,18 @@ def method_sort_key(m):
     m2 = str(m).strip().lower()
     return (order.get(m2, 99), m2)
 
-
+# plots formatting
 def pretty_case(case):
     return re.sub(r"\s+", " ", str(case).strip())
-
-
 def method_color(m):
     m2 = str(m).strip().lower()
     return METHOD_COLORS.get(m2, "#333333")
-
-
 def add_reference_lines(ax):
     ax.axhline(1.0, color="red", linestyle="--", linewidth=1.4, alpha=0.9, zorder=1)
     ax.axhline(2.0, color="red", linestyle="--", linewidth=1.4, alpha=0.9, zorder=1)
-
-
 def set_axes_style(ax):
     ax.tick_params(axis="both", which="major", labelsize=TICK_FONTSIZE)
     ax.grid(True, axis="y", alpha=0.25)
-
-
 def make_legend_handles():
     handles = [
         Line2D(
@@ -117,8 +108,6 @@ def make_legend_handles():
         ),
     ]
     return handles
-
-
 def compute_ylim_from_values(values):
     v = np.asarray(values, dtype=float)
     v = v[np.isfinite(v)]
@@ -129,7 +118,7 @@ def compute_ylim_from_values(values):
     return (0.0, ymax)
 
 
-
+# defines plots for exact derivatives
 def plot_exact_case(df, title, outpath_png):
     if df.empty:
         return
@@ -219,6 +208,7 @@ def plot_exact_case(df, title, outpath_png):
     plt.close(fig)
 
 
+# defines plots for fd derivatives
 def plot_fd_case(df, title, outpath_png):
 
     if df.empty:
@@ -348,14 +338,16 @@ def plot_fd_case(df, title, outpath_png):
     fig.savefig(outpath_png, dpi=FIG_DPI, bbox_inches="tight")
     plt.close(fig)
 
-
+# executes plots
 def main(csv_path=DEFAULT_CSV_PATH, out_root=DEFAULT_OUT_ROOT):
     if not csv_path.exists():
         print(f"[rate_of_converges.py] csv not found: {csv_path}")
         return 1
 
+    # read all data
     df = pd.read_csv(csv_path)
 
+    # check valid structure of csv file
     required = ["Problem", "n", "Method", "Case", "Success", "ConvergenceRate", "point_id"]
     missing = [c for c in required if c not in df.columns]
     if missing:
@@ -364,6 +356,7 @@ def main(csv_path=DEFAULT_CSV_PATH, out_root=DEFAULT_OUT_ROOT):
 
     df = df.copy()
 
+    #check string format
     for c in ["Problem", "Method", "Case", "h_mode", "start_type", "point_id"]:
         if c in df.columns:
             df[c] = df[c].astype(str).str.strip()
@@ -372,7 +365,7 @@ def main(csv_path=DEFAULT_CSV_PATH, out_root=DEFAULT_OUT_ROOT):
     df["Success"] = df["Success"].apply(to_bool_success)
     df = df[df["Success"]]
 
-
+    # check numeric format
     df["ConvergenceRate"] = numeric_series(df["ConvergenceRate"])
     df["n"] = pd.to_numeric(df["n"], errors="coerce")
 
@@ -396,6 +389,7 @@ def main(csv_path=DEFAULT_CSV_PATH, out_root=DEFAULT_OUT_ROOT):
     df["Problem"] = df["Problem"].astype(str)
     df["Case"] = df["Case"].apply(pretty_case)
 
+    # group by problems, dimensio and case 
     problems = sorted(df["Problem"].unique().tolist())
     for prob in problems:
         d_p = df[df["Problem"] == prob]
@@ -408,10 +402,10 @@ def main(csv_path=DEFAULT_CSV_PATH, out_root=DEFAULT_OUT_ROOT):
                 if d_c.empty:
                     continue
 
-                prob_dir = out_root / slugify(prob)
+                prob_dir = out_root / filename(prob)
                 ensure_dir(prob_dir)
 
-                case_slug = slugify(case)
+                case_slug = filename(case)
                 out_png = prob_dir / f"n_{n}_{case_slug}.png"
 
                 title = f"{prob} | n={n} | {case} | Experimental convergence rate q"

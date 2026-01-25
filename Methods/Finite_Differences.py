@@ -3,45 +3,26 @@ from scipy import sparse
 from scipy import sparse
 
 class FiniteDifferences:
-    """
-    Efficient finite differences  implementation for least-squares problems:
-    F(x) = 0.5 * || f(x) ||^2
-    
-    - structure exploited:
-        - jacobian J(x) of f(x) is assumed tridiagonal
-        - hessian of F is then pentadiagonal: J^T J (+ corrections)
-
-    - requirements:
-        - problem.function_k(x) must return the residual vector f(x), shape (n,)
-    """
 
     def __init__(self, problem_instance):
         self.problem = problem_instance
 
-    
+# builds the step of perturbation used to compute the approximation of the derivatives
     def step_vector(x, k, mode, x_ref = None, zero_floor = 1.0):
-        """
-        builds h
-
-        mode:
-            - "scalar":      h = 10^{-k}
-            - "adaptive":    h_i = 10^{-k} * |x_ref_i|  (if x_ref is None, uses x)
-
-        zero_floor:
-            - if > 0, enforces h_i >= 10^{-k} * zero_floor to avoid exactly zero steps
-              (set to 0.0 if you want the formula strictly h_i = 10^{-k} |x_i|).
-        """
+        
         eps = 10.0 ** (-k)
 
+        # scalar mode: h = 10^{-k}
         if mode == "scalar":
             return np.full_like(x, eps, dtype=float)
 
+        # adaptive mode: h_i = 10^{-k} * |x_ref_i|
         if mode == "adaptive":
             if x_ref is None:
                 x_ref = x
             h = eps * np.abs(x_ref).astype(float)
 
-            #optional safety floor to avoid zero steps (helps for numerical stability)
+            # safeguard floor to avoid zero steps when xi = 0 
             if zero_floor > 0.0:
                 floor = eps * float(zero_floor)
                 h = np.maximum(h, floor)
@@ -50,17 +31,11 @@ class FiniteDifferences:
 
         raise ValueError("mode must be 'scalar' or 'adaptive'.")
 
-    # tridiagonal jacobian
+# builds FD tridiagonal jacobian computing just the three non null diagonals
     def approximate_jacobian_tridiag_diagonals(
         self, x, k_step, step_mode, scheme = "centered", x_ref = None,
         zero_floor = 1.0):
-        """
-        approximates the three diagonals of the tridiagonal jacobian J of f(x):
 
-            - d_lower[j] = J_{j+1, j}   for j = 0,...,n-2  (offset -1)
-            - d_main[i]  = J_{i, i}
-            - d_upper[i] = J_{i, i+1}   for i = 0,...,n-2  (offset +1)
-        """
         n = x.size
         h = self.step_vector(x, k=k_step, mode=step_mode, x_ref=x_ref, zero_floor=zero_floor)
 
@@ -68,17 +43,24 @@ class FiniteDifferences:
         if f0.shape[0] != n:
             raise ValueError("function_k(x) must return a residual vector of length n.")
 
+        # d_main[i]  = J_{i, i}
         d_main = np.zeros(n, dtype=float)
+        
+        #d_lower[j] = J_{j+1, j}   for j = 0,...,n-2  (offset -1)
         d_lower = np.zeros(n - 1, dtype=float)
+
+        # d_upper[i] = J_{i, i+1}   for i = 0,...,n-2  (offset +1)
         d_upper = np.zeros(n - 1, dtype=float)
 
         p = np.zeros(n, dtype=float)
 
+        # iterate over non overlapping  sets
         for offset in (0, 1, 2):
             idx = np.arange(offset, n, 3)
             if idx.size == 0:
                 continue
-
+            
+            # apply perturbation just to the current set
             p[idx] = h[idx]
 
             if scheme == "forward":
@@ -93,6 +75,7 @@ class FiniteDifferences:
             else:
                 raise ValueError("scheme must be 'forward' or 'centered'.")
 
+            # reset perturbation value
             p[idx] = 0.0
 
             # main diagonal J_{j,j}
@@ -110,6 +93,7 @@ class FiniteDifferences:
 
         return d_lower, d_main, d_upper
 
+# recieves the three diagonals from the previous function and builds sparse Jacobian
     def approximate_jacobian_tridiag(self, x, k_step, step_mode, scheme="centered", x_ref=None, zero_floor=0.0, fmt="csr"):
         d_lower, d_main, d_upper = self.approximate_jacobian_tridiag_diagonals(
             x, k_step, step_mode, scheme, x_ref, zero_floor
@@ -117,12 +101,9 @@ class FiniteDifferences:
         return sparse.diags([d_lower, d_main, d_upper], offsets=[-1, 0, 1], shape=(x.size, x.size), format=fmt)
 
 
-
+# approximates grad F(x) = J(x)^T f(x) in O(n), using just the three diagonals of the tridiagonal jacobian
     def approximate_gradient(self, x, k_step, step_mode, scheme = "centered", x_ref = None, zero_floor = 1.0):
-        """
-        approximates grad F(x) = J(x)^T f(x) in O(n),
-        using only the three diagonals of the tridiagonal jacobian.
-        """
+        
         n = x.size
         f0 = self.problem.function_k(x).ravel()
 
@@ -139,23 +120,19 @@ class FiniteDifferences:
 
         return g
 
-
+# approximates a pentadiagonal hessian by finite differences of the gradient:
+# H_{i,j} ≈ (g_i(x + h_j e_j) - g_i(x)) / h_j
     def approximate_hessian_pentadiag(self, x, grad_fun, k_step, step_mode, x_ref = None,
         zero_floor = 1.0):
-        """
-        approximates a pentadiagonal hessian by forward differences of the gradient:
 
-            H_{i,j} ≈ (g_i(x + h_j e_j) - g_i(x)) / h_j
-
-        since the target hessian is assumed to have bandwidth 2.
-
-        returns a symmetric csr_matrix.
-        """
         n = x.size
+        
+        # computation of perturbation step
         h = self.step_vector(x, k=k_step, mode=step_mode, x_ref=x_ref, zero_floor=zero_floor)
 
         g0 = grad_fun(x).ravel()
 
+        # initialization of diagonals
         diag0 = np.zeros(n, dtype=float)
         diag_p1 = np.zeros(n - 1, dtype=float)  # offset +1
         diag_p2 = np.zeros(n - 2, dtype=float)  # offset +2
@@ -164,11 +141,13 @@ class FiniteDifferences:
 
         p = np.zeros(n, dtype=float)
 
+        # iterate over 5 non overlapping sets
         for offset in range(5):
             idx = np.arange(offset, n, 5)
             if idx.size == 0:
                 continue
-
+            
+            # apply perturbation to currect set
             p[idx] = h[idx]
             g1 = grad_fun(x + p).ravel()
             p[idx] = 0.0
@@ -198,6 +177,7 @@ class FiniteDifferences:
             if j.size > 0:
                 diag_m2[j] = diff[j + 2] / h[j]
 
+        # population of sparse matrix
         H = sparse.diags(
             diagonals=[diag_m2, diag_m1, diag0, diag_p1, diag_p2],
             offsets=[-2, -1, 0, 1, 2],
@@ -205,11 +185,11 @@ class FiniteDifferences:
             format="csr"
         )
 
-        # symmetrization is crucial for (modified) newton methods
+        # forced symmetrization is crucial for (modified) newton methods
         H = (H + H.T) * 0.5
         return H
 
-    # helper: build a consistent gradient callable for the chosen FD settings
+# helper: build a consistent gradient callable for the chosen FD settings
     def make_grad_fun(self, k_step, step_mode, scheme="centered", x_ref=None, zero_floor=1.0):
         def grad(y):
             return self.approximate_gradient(

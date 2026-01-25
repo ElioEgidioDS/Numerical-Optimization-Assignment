@@ -20,9 +20,7 @@ def generate_grouped_tables(csv_path):
     problems = ['p31', 'p52']
     cases = ['Exact', 'Mixed FD', 'Full FD']
     
-    print("% ==================================================")
-    print("% AUTOMATICALLY GENERATED 3-WAY COMPARISON TABLES")
-    print("% ==================================================\n")
+
 
     for prob in problems:
         for case in cases:
@@ -73,9 +71,6 @@ def generate_step_size_tables(csv_path):
     df = pd.read_csv(csv_path)
     prob_map = {'p31': 'Problem 31', 'p52': 'Problem 52'}
 
-    print("\n% ==================================================")
-    print("% STEP SIZE ANALYSIS TABLES (n=1000, NM, Full FD)")
-    print("% ==================================================\n")
 
     # 1. Check for 'k_fd' column
     if 'k_fd' not in df.columns:
@@ -83,16 +78,16 @@ def generate_step_size_tables(csv_path):
         return
 
     # 2. Filter Strategy
-    # Select: Mod. Newton + Full FD + n=1000
+    # Select: Mod. Newton + Full FD + n=100000
     # We look for rows where 'k_fd' exists
     target_subset = df[
         (df['Method'] == 'nm') & 
         (df['Case'] == 'Full FD') & 
-        (df['n'] == 1000)
+        (df['n'] == 100000)
     ].copy()
 
     if target_subset.empty:
-        print("% No data found matching (NM, Full FD, n=1000).")
+        print("% No data found matching (NM, Full FD, n=100000).")
         return
 
     problems = ['p31', 'p52']
@@ -110,7 +105,7 @@ def generate_step_size_tables(csv_path):
 
         print(f"\\begin{{table}}[H]")
         print(f"\\centering")
-        print(f"\\caption{{Impact of Step Size ($k$) on Stability ({prob_map.get(prob, prob)}, Mod. Newton, n=1000)}}")
+        print(f"\\caption{{Impact of Step Size ($k$) on Stability ({prob_map.get(prob, prob)}, Mod. Newton, n=100000)}}")
         print(f"\\label{{tab:{prob}_step_analysis}}")
         print(f"\\begin{{tabular}}{{|c|c|c|c|c|}}")
         print(f"\\hline")

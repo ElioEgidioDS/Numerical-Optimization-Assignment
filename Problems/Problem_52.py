@@ -5,47 +5,53 @@ class Problem_52:
     def __init__(self, n):
         self.n = n
         self.name = "p52"
-        # Starting point consigliato x0 = 0
+        #Starting point x0 = 0
         self.x0 = np.zeros(n)
 
+# method used to provide a safeguard for "dangerous" values of the esponential
     def _safe_exp(self, arg):
-        """Previene l'overflow limitando l'esponente nell'intervallo sicuro per float64."""
         return np.exp(np.clip(arg, -100, 100))
 
+# returns vector f_k(x) 
     def function_k(self, x):
         n = self.n
         f = np.zeros(n)
         
-        # k = 1 (indice 0)
+        # construction of all terms
+        # k = 1 (=0 for python indexes)
         f[0] = 3.0 * x[0]**3 + 2.0 * x[1] - 5.0 + np.sin(x[0])**2 - np.sin(x[1])**2
         
         # 1 < k < n
         if n > 2:
-            # Termine esponenziale protetto
+            # apply safeguard
             exp_term = self._safe_exp(x[:-2] - x[1:-1])
             f[1:-1] = -x[:-2] * exp_term + x[1:-1] * (4.0 + 3.0 * x[1:-1]**2) + \
                       2.0 * x[2:] + np.sin(x[1:-1])**2 - np.sin(x[2:])**2 - 8.0
 
-        # k = n
+        # k = n (=n-1 for python indices)
+        #apply safeguard
         exp_term_last = self._safe_exp(x[-2] - x[-1])
         f[-1] = -x[-2] * exp_term_last + 4.0 * x[-1] - 3.0
                     
         return f
 
+# returns function F(x) = 0.5 * ||f(x)||^2
     def function(self, x):
+
         f = self.function_k(x)
         return 0.5 * np.dot(f, f)
 
+# returns exact gradient
     def gradient(self, x):
+
         n = self.n
         f = self.function_k(x)
         grad = np.zeros(n)
         
-        # d(f_k)/d(x_k)
+        # computation of d(f_k) / d(x_k)
         diag_J = np.zeros(n)
         diag_J[0] = 9.0 * x[0]**2 + np.sin(2*x[0])
         if n > 2:
-            # Uso lo stesso safe_exp usato in function_k
             diag_J[1:-1] = x[:-2] * self._safe_exp(x[:-2]-x[1:-1]) + (4.0 + 9.0*x[1:-1]**2) + np.sin(2*x[1:-1])
         diag_J[-1] = 4.0 + x[-2] * self._safe_exp(x[-2]-x[-1])
 
@@ -53,39 +59,41 @@ class Problem_52:
         low_J = - (1.0 + x[:-1]) * self._safe_exp(x[:-1] - x[1:])
         
         # d(f_k)/d(x_{k+1})
-        up_J = 2.0 - np.sin(2 * x[1:])        
-        # Grad = J.T @ f
+        up_J = 2.0 - np.sin(2 * x[1:])    
+
+        # contribution of [f_k] (for all k)
         grad += f * diag_J
         grad[:-1] += low_J * f[1:] 
         grad[1:] += up_J * f[:-1] 
 
         return grad
 
+# returns exact sparse Hessian: J.T @ J + Second order terms
     def hessian(self, x):
         n = self.n
         f = self.function_k(x)
         
-        # d(f_k)/d(x_k)
+        # computation of d(f_k)/d(x_k)
         diag_J = np.zeros(n)
         diag_J[0] = 9.0 * x[0]**2 + np.sin(2*x[0])
         if n > 2:
-            # Uso lo stesso safe_exp usato in function_k
             diag_J[1:-1] = x[:-2] * self._safe_exp(x[:-2]-x[1:-1]) + (4.0 + 9.0*x[1:-1]**2) + np.sin(2*x[1:-1])
         diag_J[-1] = 4.0 + x[-2] * self._safe_exp(x[-2]-x[-1])
 
-        # d(f_k)/d(x_{k-1})
+        # computation of d(f_k)/d(x_{k-1})
         low_J = - (1.0 + x[:-1]) * self._safe_exp(x[:-1] - x[1:])
         
-        # d(f_k)/d(x_{k+1})
-        up_J = 2.0 - np.sin(2 * x[1:])        
-        # Jacobiano Tridiagonale
+        # computation of d(f_k)/d(x_{k+1})
+        up_J = 2.0 - np.sin(2 * x[1:])  
+
+        # tridiagonal matrix J
         J = diags([low_J, diag_J, up_J], [-1, 0, 1], shape=(n, n), format='csr')
         
-        # First order term ----------------------------
+        # First order term s
         first_order = J.T @ J
         
-        # Second order term ----------------------------
-        # second derivatives d^2 f_k / dx_k^2
+
+        # computation of d^2(f_k) / d(x_k)^2
         d2fk_dxk2 = np.zeros(n)
         d2fk_dxk2[0] = 18*x[0] + 2*np.cos(2*x[0]) # (for all k)
         

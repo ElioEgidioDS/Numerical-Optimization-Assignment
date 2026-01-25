@@ -7,7 +7,23 @@ from Methods.ModifiedNewtonMethod import ModifiedNewtonMethod
 from Methods.TruncatedNewtonMethod import TruncatedNewtonMethod
 from Methods.Finite_Differences import FiniteDifferences
 from Problems.Problem_fd import Problem_fd
-import sys
+
+# the main file executes all the actual calls to different methods, on different
+# problems, using different parameters
+
+# initializes Problem 31, Problem 52 and suggested starting points
+
+# runs both Modified Newton (NM) and Truncated Newton (TR) methods using
+    # exact derivatives gradient + hessian
+    # mixed FD: exact gradient + fd hessian
+    # full FD: fd gradient + fd hessian
+
+# performs analysis on the results
+    # Execution time and Iteration count.
+    # order of convergence
+    # norm of the gradient and final value
+# saves all results in csv files
+
 
 _T0 = time.time()
 
@@ -15,7 +31,7 @@ def log(msg: str):
     dt = time.time() - _T0
     print(f"[{dt:9.2f}s] {msg}", flush=True)
 
-
+# function that computes the experimental order of convegrence
 def calculate_convergence_order(step_sizes):
 
     #s_k = ||x_{k+1} - x_k||
@@ -25,8 +41,11 @@ def calculate_convergence_order(step_sizes):
         return np.nan
 
     s = np.asarray(step_sizes, dtype=float)
+    # need at least three steps
     if s.size < 3:
         return np.nan
+    
+    # use just valid values
     if np.any(~np.isfinite(s)) or np.any(s <= 0):
         return np.nan
 
@@ -40,12 +59,14 @@ def calculate_convergence_order(step_sizes):
     for k in range(1, ratios.size):
         num = np.log(ratios[k])
         den = np.log(ratios[k - 1])
+        # null denominator
         if np.isfinite(num) and np.isfinite(den) and den != 0:
             q_vals.append(num / den)
 
     return q_vals[-1] if q_vals else np.nan
 
 
+# relative paths 
 def ensure_dir(folder_path):
     os.makedirs(folder_path, exist_ok=True)
 
@@ -55,17 +76,17 @@ def get_problem_name(problem_instance):
         return str(problem_instance.name)
     return type(problem_instance).__name__
 
-
+# handles different returns for mn
 def unpack_nm_output(out):
 
     if isinstance(out, tuple) or isinstance(out, list):
-        if len(out) == 6:
+        if len(out) == 6: 
             return out[0], out[1], out[2], out[3], out[4], out[5]
         if len(out) == 5:
             return out[0], out[1], out[2], out[3], out[4], "x"
     raise ValueError("unexpected return format from ModifiedNewtonMethod.modified_newton")
 
-
+# handles different returns for mn
 def unpack_tr_output(out):
 
     if isinstance(out, tuple) or isinstance(out, list):
@@ -75,9 +96,8 @@ def unpack_tr_output(out):
             return out[0], out[1], out[2], out[3], out[4], "x"
     raise ValueError("unexpected return format from TruncatedNewtonMethod.truncated_newton")
 
-
+# computes ||x_{k+1} - x_k||
 def steps_from_path(path):
-   
     if path is None:
         return None
     P = np.asarray(path)
@@ -86,7 +106,7 @@ def steps_from_path(path):
     diffs = P[1:] - P[:-1]
     return np.linalg.norm(diffs, axis=1).tolist()
 
-
+# stores path for n = 2
 def append_paths_n2(path_rows, run_id, problem_name, n, method, case, h_mode, k_fd, tol, start_type, point_id, path):
     if n != 2 or path is None:
         return
@@ -111,6 +131,7 @@ def append_paths_n2(path_rows, run_id, problem_name, n, method, case, h_mode, k_
             "x2": float(P[k_iter, 1]),
         })
 
+# stores norm for convergence plots
 def append_step_norms(norm_rows, run_id, problem_name, n, method, case, h_mode, k_fd, tol, start_type, point_id, path):
 
     if path is None:
@@ -138,6 +159,17 @@ def append_step_norms(norm_rows, run_id, problem_name, n, method, case, h_mode, 
             "step_norm": float(step_val) 
         })
 
+
+# handles csv files compilation
+def save_csv(df, filepath, append=False):
+    ensure_dir(os.path.dirname(filepath))
+    if append and os.path.exists(filepath):
+        df.to_csv(filepath, index=False, mode="a", header=False)
+    else:
+        df.to_csv(filepath, index=False)
+
+# -----------------------------------------------------------------------------------------
+# runs Modified Newton
 def run_one_nm(nm, problem_proxy, problem_base, x0):
     t0 = time.time()
     out = nm.modified_newton(problem_proxy, x0)
@@ -145,6 +177,8 @@ def run_one_nm(nm, problem_proxy, problem_base, x0):
 
     x, path, grad_norm, success, iters, flag = unpack_nm_output(out)
     fval = problem_base.function(x)
+
+    # computes convergence
     q = calculate_convergence_order(steps_from_path(path))
 
     path_len = int(np.asarray(path).shape[0]) if path is not None else 0
@@ -155,7 +189,8 @@ def run_one_nm(nm, problem_proxy, problem_base, x0):
 
     return x, path, grad_norm, bool(success), int(iters), flag, float(tsec), float(fval), q, path_len, last_step
 
-
+# -----------------------------------------------------------------------------------------
+# runs Modified Newton
 def run_one_tr(tr, problem_proxy, problem_base, x0):
     t0 = time.time()
     out = tr.truncated_newton(problem_proxy.function, problem_proxy.gradient, problem_proxy.hessian, x0)
@@ -173,15 +208,8 @@ def run_one_tr(tr, problem_proxy, problem_base, x0):
 
     return x, path, grad_norm, bool(success), int(iters), flag, float(tsec), float(fval), q, path_len, last_step
 
-
-def save_csv(df, filepath, append=False):
-    ensure_dir(os.path.dirname(filepath))
-    if append and os.path.exists(filepath):
-        df.to_csv(filepath, index=False, mode="a", header=False)
-    else:
-        df.to_csv(filepath, index=False)
-
-
+# -----------------------------------------------------------------------------------------
+# handles all the run combinations
 def final(
     x0,
     xRand,
@@ -201,13 +229,6 @@ def final(
     out_norms_csv=os.path.join("csv", "norms", "step_norms.csv"),
     append_to_existing=False,
 ):
-    """
-    creates:
-      1) csv/final/final_results.csv
-         one row = one run (no averaging of the 5 random points)
-      2) csv/path/paths_n2.csv
-         only n=2 iterates for every run (initial + random), all cases/methods
-    """
 
     _t0 = time.time()
 
@@ -226,6 +247,7 @@ def final(
     log(f"START final() | Problem={problem_name} | dims={dims} | cases={cases} | tol={tol}")
     log(f"Output: final='{out_final_csv}' | paths='{out_paths_csv}' | append={append_to_existing}")
 
+    # call 2 methods
     nm = ModifiedNewtonMethod(tol, max_iter_nm, rho, c1)
     tr = TruncatedNewtonMethod(tol, max_iter_tr, inner_max_iter_tr, "sl", rho, c1)
 
@@ -234,12 +256,14 @@ def final(
     norm_rows = []
     run_id_counter = 0
 
+    # get starting point suggested
     def get_xbar(n):
         for p in x0:
             if int(p.shape[0]) == int(n):
                 return p
         return None
 
+    # get random starting points
     def get_rand_block(n):
         for X in xRand:
             if int(X.shape[1]) == int(n):
@@ -272,6 +296,7 @@ def final(
             "LastStep": last_step,
         })
 
+    # iterate over all dimensions
     for n in dims:
         log(f"--- n={n} | building base problem + FD ---")
         problem_base = type(problem_main)(n)
@@ -280,6 +305,7 @@ def final(
         xbar = get_xbar(n)
         Xrand = get_rand_block(n)
 
+        #l list with all starting points
         starts = []
         if xbar is not None:
             starts.append(("initial", "xbar", xbar))
@@ -293,7 +319,8 @@ def final(
 
         log(f"n={n} | starts={len(starts)} (" + ", ".join([f"{st}:{pid}" for st, pid, _ in starts]) + ")")
 
-
+# -----------------------------------------------------------------------------------------
+# exact derivatives
         if "Exact" in cases:
             case = "Exact"
             log(f"[CASE] {case} | n={n} | runs={len(starts)} | methods=nm,tr")
@@ -329,7 +356,8 @@ def final(
 
                 log(f"Done run={run_id} | {case} | n={n} | start={start_type}:{point_id} | tr | ok={ok} | iters={iters} | ||g||={gnorm:.3e} | f={fval:.3e} | t={tsec:.2f}s | flag={flag}")
 
-        
+# -----------------------------------------------------------------------------------------
+        # mixed fd
         if "Mixed FD" in cases:
             case = "Mixed FD"
             log(f"[CASE] {case} | n={n} | combos={len(h_modes)*len(k_values)} | runs_per_combo={len(starts)} | methods=nm,tr")
@@ -382,7 +410,8 @@ def final(
 
                         log(f"Done run={run_id} | {case} | n={n} | {h_mode},k={k_fd} | start={start_type}:{point_id} | tr | ok={ok} | iters={iters} | ||g||={gnorm:.3e} | f={fval:.3e} | t={tsec:.2f}s | flag={flag}")
 
-
+# -----------------------------------------------------------------------------------------
+        # full fd
         if "Full FD" in cases:
             case = "Full FD"
             log(f"[CASE] {case} | n={n} | combos={len(h_modes)*len(k_values)} | runs_per_combo={len(starts)} | methods=nm,tr")
@@ -441,10 +470,12 @@ def final(
 
                         log(f"Done run={run_id} | {case} | n={n} | {h_mode},k={k_fd} | start={start_type}:{point_id} | tr | ok={ok} | iters={iters} | ||g||={gnorm:.3e} | f={fval:.3e} | t={tsec:.2f}s | flag={flag}")
 
+    # convert results into dataframes
     df_final = pd.DataFrame(rows)
     df_paths = pd.DataFrame(path_rows)
     df_norms = pd.DataFrame(norm_rows)
 
+    # save into csv files
     log(f"Saving CSVs... final_rows={len(df_final)} | paths_rows={len(df_paths)}")
     save_csv(df_final, out_final_csv, append=append_to_existing)
     save_csv(df_paths, out_paths_csv, append=append_to_existing)
@@ -453,14 +484,9 @@ def final(
     log("END final()")
     return df_final, df_paths, df_norms
 
-
+# generates starting points
 def build_starting_points(problem_class, n_list, runs_per_n=5, seed=352283):
-    """
-    Returns:
-      x0_list: list of np.array, one per n, the recommended initial point (xbar)
-      xRand_list: list of np.array, one per n, shape (runs_per_n, n)
-                 random points sampled in [xbar-1, xbar+1] component-wise
-    """
+
     np.random.seed(seed)
 
     x0_list = []
@@ -478,22 +504,27 @@ def build_starting_points(problem_class, n_list, runs_per_n=5, seed=352283):
 
     return x0_list, xRand_list
 
-
+# ---------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------
 def main():
     from Problems.Problem_52 import Problem_52
     from Problems.Problem_31 import Problem_31
 
     problems = [Problem_52, Problem_31]
-    n_list = [2, 10**3, 10**4, 10**5]  # prova con n piccoli
+    n_list = [2, 10**3, 10**4, 10**5]  
 
+    # defie paths
     out_final = os.path.join("csv", "final", "final_results.csv")
     out_paths = os.path.join("csv", "path", "paths_n2.csv")
     out_norms = os.path.join("csv", "norms", "convergence_errors.csv")
 
+    # run all cases
     for idx, problem_class in enumerate(problems):
+        # generate starting points
         x0, xRand = build_starting_points(problem_class, n_list, runs_per_n=5, seed=352283)
         problem_main = problem_class(n_list[0])
 
+        # actual execution
         df_final, df_paths , df_norms = final(
             x0=x0,
             xRand=xRand,

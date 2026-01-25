@@ -20,12 +20,12 @@ class Problem_31:
 
         # construction of all terms
         # k = 1 (=0 for python indexes)
-        f[0] = term[0] - 2 * x[1]
+        f[0] = term[0] - 2 * x[1] 
 
         # 1 < k < n
         f[1:-1] = term[1:-1] - 2 * x[2:] - x[:-2]
         
-        #  k = n (=n-1 for python indexes)
+        #  k = n (=n-1 for python indices)
         f[-1] = term[-1] - x[-2]
                     
         return f

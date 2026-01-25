@@ -6,8 +6,23 @@ from Problems.Problem_52 import Problem_52
 import matplotlib.pyplot as plt
 from Methods.TruncatedNewtonMethod import TruncatedNewtonMethod
 
-'''Python script to determine best tolerance and backtracking values, imitating a grid search algorithm'''
+# script used to determine best tolerance and backtracking values, imitating a grid search algorithm
+# performed on both methods
+    # Modified Newton Method (NM)
+    # Truncated Newton Method (TR)
 
+# it iterates over three different things
+    # iterate_fd: step size and mode (scalar & adaptive)
+
+    # iterate_tol: iterates over tol = 1e-4, 1e-6, 1e-8
+
+    # iterate_bcktrk: iterates over rho and c1
+
+# --------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------
+
+# check how methods perform when using FD instead of exact derivatives
+# we iterate over different step sizes (k) and step modes (scalar adaptive).
 def iterate_fd(x0, xRand, problem_main, return_full=False):
     import time
     import numpy as np
@@ -27,9 +42,8 @@ def iterate_fd(x0, xRand, problem_main, return_full=False):
     x_initial_fd = []
     x_initial_fd_tr = []  
 
-    # -------------------------
-    # INITIAL POINTS (x0)
-    # -------------------------
+    # check using suggested initial points (x0)
+
     for starting_point in x0:
         problem = type(problem_main)(starting_point.shape[0])
         fd_solver = FiniteDifferences(problem)
@@ -90,7 +104,7 @@ def iterate_fd(x0, xRand, problem_main, return_full=False):
                     #"path": path_tr,
                 })
 
-
+    # check using random initial points in a neighbourood of the suggested one
     n_dim = xRand[3].shape[1]
     problem = type(problem_main)(n_dim)
     fd_solver = FiniteDifferences(problem)
@@ -199,7 +213,9 @@ def iterate_fd(x0, xRand, problem_main, return_full=False):
 
     return x_initial_fd_df, x_initial_fd_tr_df, x_random_fd_df, x_random_fd_tr_df
 
-
+# --------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------
+# iterate over tolerances
 def iterate_tol(x0, xRand, problem_main, return_full=False):
     tolerances = [1e-4, 1e-6, 1e-8]
     all_results = {}
@@ -257,28 +273,6 @@ def iterate_tol(x0, xRand, problem_main, return_full=False):
                 "path": path_tr,
             }
 
-      
-        '''for starting_point in x_ground:
-
-            problem_64 = Problem_64(starting_point.shape[0], 10)
-
-            start_time = time.time()
-            x, path, norm_gradient, converges, failure_reason, steps = modified_newt.modified_newton(
-                problem_64, starting_point, mode="exact"
-            )
-            end_time = time.time() - start_time
-
-            final_score = problem_64.function(x)
-
-            x_ground_results[starting_point.shape[0]] = {
-                "norm_gradient": norm_gradient,
-                "time": end_time,
-                "final_score": final_score,
-                "converges": converges,
-                "failure_reason": failure_reason,
-                "iterations": steps,
-                "path": path,
-            }'''
 
         # random initialization (5 runs per size)
         for starting_size in xRand:
@@ -456,6 +450,9 @@ def iterate_tol(x0, xRand, problem_main, return_full=False):
 
     return df_nm_init, df_tr_init, df_nm_rand, df_tr_rand
 
+# --------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------
+# check best combinations of c1 and rho for armiho + backtracking linesearch strategy
 def iterate_bcktrk(x0,xRand, problem_main):
     bck_trk_C1 = [1e-4, 1e-3, 1e-2, 0.1]
     bck_trk_rho = [0.2, 0.4, 0.6, 0.8]
